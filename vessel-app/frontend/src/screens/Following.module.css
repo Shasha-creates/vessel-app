@@ -1,0 +1,82 @@
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  color: var(--text-muted);
+}
+
+.emptyState {
+  padding: 2.4rem 1.8rem;
+  border-radius: 20px;
+  border: 1px dashed var(--border-muted);
+  text-align: center;
+  color: var(--text-secondary);
+  background: rgba(15, 18, 28, 0.88);
+  margin: 2rem 1rem;
+}
+
+.emptyState h3 {
+  margin: 0 0 0.75rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.viewport {
+  position: relative;
+  width: min(680px, 94vw);
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.track {
+  width: min(640px, 92vw);
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  border-radius: 28px;
+  scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: center;
+  padding: clamp(0.5rem, 4vw, 2rem) 0;
+  box-sizing: border-box;
+}
+
+.dotRail {
+  position: absolute;
+  right: 1.6rem;
+  bottom: clamp(4.5rem, 16vw, 7rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  z-index: 4;
+}
+
+.dot,
+.dotActive {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.dotActive {
+  background: #fff;
+  transform: scale(1.4);
+}

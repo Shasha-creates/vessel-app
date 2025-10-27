@@ -1,0 +1,246 @@
+.card {
+  position: relative;
+  width: min(620px, 92vw);
+  height: 100%;
+  max-height: 100%;
+  border-radius: 32px;
+  overflow: hidden;
+  background: black;
+  box-shadow: 0 45px 90px -50px rgba(12, 16, 28, 0.85);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.7) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay {
+  position: absolute;
+  left: clamp(1rem, 5vw, 2rem);
+  right: clamp(3rem, 12vw, 5rem);
+  bottom: clamp(1.25rem, 5vw, 2.4rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  color: #fff;
+  z-index: 2;
+}
+
+.topMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  backdrop-filter: blur(6px);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.18s ease;
+}
+
+.avatar:hover,
+.avatar:focus-visible {
+  transform: scale(1.04);
+}
+
+.profileInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profileInfo:focus-visible {
+  outline: 2px solid rgba(116, 241, 255, 0.6);
+  outline-offset: 3px;
+}
+
+.followButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.handle {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.followButton {
+  margin-left: auto;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(26, 34, 54, 0.6);
+  color: #fff;
+  padding: 0.4rem 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease, border 0.18s ease;
+}
+
+.followButton:hover {
+  transform: translateY(-2px);
+  background: rgba(71, 102, 255, 0.8);
+  border-color: transparent;
+}
+
+.followButtonActive {
+  background: rgba(255, 255, 255, 0.92);
+  color: #12152a;
+  border-color: transparent;
+}
+
+.category {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 600;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
+  font-weight: 700;
+  line-height: 1.25;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.75);
+}
+
+.description {
+  margin: 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  opacity: 0.92;
+}
+
+.scripture {
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.tagRow {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: rgba(255, 255, 255, 0.22);
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+}
+
+.actions {
+  position: absolute;
+  right: clamp(1rem, 4.5vw, 1.9rem);
+  bottom: clamp(0.9rem, 9vw, 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.9rem, 3vw, 1.45rem);
+  align-items: center;
+  z-index: 2;
+}
+
+.actionButton {
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.actionButton:hover {
+  transform: translateY(-3px);
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.actionButtonActive {
+  background: linear-gradient(135deg, rgba(110, 138, 255, 0.95), rgba(91, 224, 255, 0.95));
+  color: #101225;
+}
+
+.actionIcon {
+  font-size: 1.25rem;
+}
+
+.actionCount {
+  font-size: 0.82rem;
+}
+
+.duration {
+  position: absolute;
+  right: clamp(1rem, 4vw, 1.8rem);
+  bottom: clamp(0.7rem, 4.5vw, 1.9rem);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+@media (max-width: 600px) {
+  .card {
+    width: 100vw;
+    height: 100vh;
+    border-radius: 0;
+  }
+
+  .actions {
+    right: 1rem;
+    bottom: 4.5rem;
+  }
+
+  .duration {
+    right: 1rem;
+    bottom: 2.8rem;
+  }
+}
+
+
+
+.profileInfo span {
+  pointer-events: none;
+}
+
+

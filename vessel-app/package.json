@@ -1,0 +1,5 @@
+{
+  "name": "vessel-app",
+  "private": true,
+  "workspaces": ["frontend", "backend"]
+}

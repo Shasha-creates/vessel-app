@@ -1,0 +1,79 @@
+.login {
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.login h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.form {
+  padding: 2rem;
+  border-radius: 18px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 22px 48px -40px rgba(17, 32, 56, 0.75);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form input {
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+}
+
+.error {
+  color: #ff8a85;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.actions button {
+  border-radius: 999px;
+  border: none;
+  padding: 0.75rem 1.6rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.actions button[type='submit'] {
+  background: var(--accent-strong);
+  color: white;
+}
+
+.actions button[type='button'] {
+  background: var(--surface-base);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+.actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

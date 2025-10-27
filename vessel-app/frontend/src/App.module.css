@@ -1,0 +1,101 @@
+.app {
+  min-height: 100vh;
+  background: var(--app-background);
+  display: flex;
+  flex-direction: column;
+  color: var(--text-primary);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding-bottom: calc(var(--bottom-nav-height) + 1rem);
+}
+
+.bottomNav {
+  position: fixed;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  width: min(560px, 92vw);
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0.4rem 0.75rem;
+  background: rgba(12, 16, 28, 0.94);
+  backdrop-filter: blur(18px);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px -40px rgba(12, 16, 28, 0.75);
+  z-index: 40;
+}
+
+.bottomLink {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  text-decoration: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.bottomLinkActive {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.bottomLinkPrimary {
+  width: 66px;
+  height: 66px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, #68a5ff 0%, #7cf2ff 100%);
+  color: #101225;
+  font-size: 1.7rem;
+  font-weight: 700;
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 22px 40px -24px rgba(100, 160, 255, 0.85);
+}
+
+.bottomIconCircle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badgedLabel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.3rem;
+  height: 1.3rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #101225;
+  background: #ff5c77;
+  border-radius: 999px;
+  padding: 0 0.35rem;
+}

@@ -1,0 +1,35 @@
+﻿:root {
+  color-scheme: dark;
+  --app-background: radial-gradient(circle at top, #1c1f2b 0%, #050607 40%, #050505 100%);
+  --text-primary: #f6f7fb;
+  --text-secondary: #bfc3d9;
+  --text-muted: #7b7e90;
+  --surface-base: rgba(10, 12, 18, 0.88);
+  --surface-elevated: rgba(18, 20, 28, 0.92);
+  --surface-highlight: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-muted: rgba(255, 255, 255, 0.12);
+  --accent-strong: #3cf2ff;
+  --accent-soft: rgba(60, 242, 255, 0.15);
+  --bottom-nav-height: 78px;
+}
+
+body {
+  margin: 0;
+  background: var(--app-background);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  color: var(--text-primary);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}

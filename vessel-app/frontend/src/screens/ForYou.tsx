@@ -1,0 +1,211 @@
+import React from "react"
+import { useNavigate } from "react-router-dom"
+import VideoCard from "../shared/VideoCard"
+import { contentService, type Video } from "../services/contentService"
+import { CommentSheet, DonateSheet } from "../shared/VideoSheets"
+import styles from "./ForYou.module.css"
+
+type Props = {
+  filter?: (clip: Video) => boolean
+}
+
+const normalizeProfileTarget = (video: Video): string => {
+  const candidate = (video.user.id || "").trim()
+  if (candidate) return candidate
+  const fallback = video.user.name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return fallback || "creator"
+}
+
+const resolveUserId = (clip: Video): string => clip.user.id || normalizeProfileTarget(clip)
+
+export default function ForYou({ filter }: Props) {
+  const [clips, setClips] = React.useState<Video[]>([])
+  const [loading, setLoading] = React.useState(true)
+  const [index, setIndex] = React.useState(0)
+  const [followLoading, setFollowLoading] = React.useState<string | null>(null)
+  const [commentClip, setCommentClip] = React.useState<Video | null>(null)
+  const [donateClip, setDonateClip] = React.useState<Video | null>(null)
+  const navigate = useNavigate()
+  const trackRef = React.useRef<HTMLDivElement | null>(null)
+  const rafRef = React.useRef<number | null>(null)
+
+  React.useEffect(() => {
+    let mounted = true
+
+    async function loadFeed() {
+      const data = await contentService.fetchForYouFeed()
+      if (mounted) {
+        setClips(data)
+        setLoading(false)
+      }
+    }
+
+    loadFeed()
+    const unsubscribe = contentService.subscribe(loadFeed)
+
+    return () => {
+      mounted = false
+      unsubscribe()
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current)
+      }
+    }
+  }, [])
+
+  const visibleClips = React.useMemo(() => {
+    if (!filter) return clips
+    return clips.filter(filter)
+  }, [clips, filter])
+
+  React.useEffect(() => {
+    setIndex(0)
+    const node = trackRef.current
+    if (node) {
+      node.scrollTo({ top: 0 })
+    }
+  }, [visibleClips.length])
+
+  const scrollTo = React.useCallback(
+    (target: number) => {
+      const node = trackRef.current
+      if (!node) return
+      const clampTarget = Math.max(0, Math.min(target, visibleClips.length - 1))
+      node.scrollTo({ top: clampTarget * node.clientHeight, behavior: "smooth" })
+    },
+    [visibleClips.length]
+  )
+
+  const handleScroll = React.useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current)
+    }
+    rafRef.current = window.requestAnimationFrame(() => {
+      const node = trackRef.current
+      if (!node) return
+      const next = Math.round(node.scrollTop / node.clientHeight)
+      if (next !== index && next >= 0 && next < visibleClips.length) {
+        setIndex(next)
+      }
+    })
+  }, [index, visibleClips.length])
+
+  const handleKey = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === "ArrowDown") {
+        event.preventDefault()
+        scrollTo(index + 1)
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault()
+        scrollTo(index - 1)
+      }
+    },
+    [index, scrollTo]
+  )
+
+  const handleFollowAction = React.useCallback(
+    async (clip: Video) => {
+      const targetId = resolveUserId(clip)
+      setFollowLoading(targetId)
+      try {
+        if (contentService.isFollowing(targetId)) {
+          await contentService.unfollowUser(targetId)
+        } else {
+          await contentService.followUser(targetId)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unable to update follow status. Please try again."
+        window.alert(message)
+      } finally {
+        setFollowLoading((current) => (current === targetId ? null : current))
+      }
+    },
+    []
+  )
+
+  const openProfile = React.useCallback(
+    (clip: Video) => {
+      const target = normalizeProfileTarget(clip)
+      navigate(`/profile/${target}`)
+    },
+    [navigate]
+  )
+
+  if (loading) {
+    return (
+      <div className={styles.loading}>
+        Curating today's devotionals...
+      </div>
+    )
+  }
+
+  if (!visibleClips.length) {
+    return (
+      <div className={styles.empty}>
+        Nothing to show here yet. Check back soon for new Vessel moments.
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <div className={styles.viewport}>
+        <div className={styles.track} ref={trackRef} onScroll={handleScroll} onKeyDown={handleKey} tabIndex={0}>
+          {visibleClips.map((clip, clipIndex) => {
+            const userId = resolveUserId(clip)
+            const isFollowingCreator = contentService.isFollowing(userId)
+            const busy = followLoading === userId
+            const isActive = clipIndex === index
+            return (
+              <section key={clip.id} className={styles.slide}>
+                <VideoCard
+                  video={clip}
+                  onLike={() => contentService.recordLike(clip.id)}
+                  onComment={() => setCommentClip(clip)}
+                  onBookmark={() => contentService.toggleBookmark(clip.id)}
+                  onShare={() => {
+                    contentService.recordShare(clip.id)
+                    const shareUrl =
+                      typeof window !== 'undefined' ? `${window.location.origin}/watch/${clip.id}` : `/watch/${clip.id}`
+                    if (navigator && 'share' in navigator) {
+                      navigator.share({ title: clip.title, url: shareUrl }).catch(() => {
+                        window.open(shareUrl, '_blank')
+                      })
+                    } else if (navigator?.clipboard) {
+                      navigator.clipboard.writeText(shareUrl).catch(() => {
+                        window.open(shareUrl, '_blank')
+                      })
+                    }
+                  }}
+                  onDonate={() => setDonateClip(clip)}
+                  onFollow={() => handleFollowAction(clip)}
+                  followBusy={busy}
+                  isBookmarked={contentService.isBookmarked(clip.id)}
+                  isFollowing={isFollowingCreator}
+                  onAuthorClick={openProfile}
+                  isActive={isActive}
+                />
+              </section>
+            )
+          })}
+        </div>
+        <div className={styles.dotRail}>
+          {visibleClips.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              className={i === index ? styles.dotActive : styles.dot}
+              onClick={() => scrollTo(i)}
+              aria-label={`Go to clip ${i + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+      {commentClip ? <CommentSheet clip={commentClip} onClose={() => setCommentClip(null)} /> : null}
+      {donateClip ? <DonateSheet clip={donateClip} onClose={() => setDonateClip(null)} /> : null}
+    </>
+  )
+}

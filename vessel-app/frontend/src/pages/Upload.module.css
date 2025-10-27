@@ -1,0 +1,84 @@
+.upload {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.upload h1 {
+  margin: 0;
+  font-size: 2rem;
+  color: var(--text-primary);
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 2rem;
+  border-radius: 18px;
+  background: var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 24px 48px -42px rgba(17, 32, 56, 0.85);
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form input,
+.form textarea,
+.form select {
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  background: var(--surface-base);
+  color: var(--text-primary);
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.fileInput input {
+  padding: 0.4rem 0.65rem;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions button {
+  border-radius: 999px;
+  border: none;
+  background: var(--accent-strong);
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 1.8rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.actions button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px -26px rgba(73, 97, 140, 0.85);
+}
+
+.error {
+  margin-top: 0.8rem;
+  color: #ff8a85;
+  font-weight: 600;
+}
