@@ -186,17 +186,6 @@ export default function Following() {
             )
           })}
         </div>
-        <div className={styles.dotRail}>
-          {clips.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={i === index ? styles.dotActive : styles.dot}
-              onClick={() => scrollTo(i)}
-              aria-label={`Go to clip ${i + 1}`}
-            />
-          ))}
-        </div>
       </div>
       {commentClip ? <CommentSheet clip={commentClip} onClose={() => setCommentClip(null)} /> : null}
       {donateClip ? <DonateSheet clip={donateClip} onClose={() => setDonateClip(null)} /> : null}

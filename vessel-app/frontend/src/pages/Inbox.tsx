@@ -1,5 +1,6 @@
 import React from 'react'
 import styles from './Inbox.module.css'
+import { contentService, type ContactMatch } from '../services/contentService'
 
 type NotificationItem = {
   id: string
@@ -25,7 +26,7 @@ type ConversationThread = {
   messages: ConversationMessage[]
 }
 
-type TabKey = 'notifications' | 'messages'
+type TabKey = 'notifications' | 'messages' | 'contacts'
 
 const notifications: NotificationItem[] = [
   { id: 'n1', type: 'like', actor: '@risinghope', message: 'loved Sunrise Worship Session', timeAgo: '2m' },
@@ -106,6 +107,10 @@ export default function Inbox() {
     () => messageThreadsSeed[0]?.id ?? null
   )
   const [drafts, setDrafts] = React.useState<Record<string, string>>({})
+  const [contactInput, setContactInput] = React.useState('friend@example.com\nleader@citychurch.org')
+  const [contactMatches, setContactMatches] = React.useState<ContactMatch[]>([])
+  const [contactsBusy, setContactsBusy] = React.useState(false)
+  const [contactsError, setContactsError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (tab === 'messages' && !activeConversationId && threads.length) {
@@ -126,6 +131,36 @@ export default function Inbox() {
 
   function updateDraft(id: string, value: string) {
     setDrafts((current) => ({ ...current, [id]: value }))
+  }
+
+  async function checkContacts(event: React.FormEvent) {
+    event.preventDefault()
+    const emails = contactInput
+      .split(/[\s,;,]+/)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+
+    if (!emails.length) {
+      setContactsError('Add at least one email address to check.')
+      setContactMatches([])
+      return
+    }
+
+    setContactsBusy(true)
+    setContactsError(null)
+    try {
+      const matches = await contentService.matchContactsByEmail(emails)
+      setContactMatches(matches)
+      if (!matches.length) {
+        setContactsError('No contacts found yet. Try inviting your friends!')
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to check contacts right now.'
+      setContactsError(message)
+      setContactMatches([])
+    } finally {
+      setContactsBusy(false)
+    }
   }
 
   function sendMessage(conversationId: string, overrideText?: string) {
@@ -177,20 +212,22 @@ export default function Inbox() {
     }, 1400)
   }
 
-  const tabContent =
-    tab === 'notifications'
-      ? notifications.map((item) => (
-          <article key={item.id} className={styles.item}>
-            <div className={`${styles.badge} ${styles[item.type]}`}>{badgeIcon(item.type)}</div>
-            <div className={styles.body}>
-              <div className={styles.title}>
-                <span className={styles.actor}>{item.actor}</span> {item.message}
-              </div>
-              <span className={styles.time}>{item.timeAgo} ago</span>
-            </div>
-          </article>
-        ))
-      : threads.map((thread) => {
+  let tabContent: React.ReactNode
+
+  if (tab === 'notifications') {
+    tabContent = notifications.map((item) => (
+      <article key={item.id} className={styles.item}>
+        <div className={`${styles.badge} ${styles[item.type]}`}>{badgeIcon(item.type)}</div>
+        <div className={styles.body}>
+          <div className={styles.title}>
+            <span className={styles.actor}>{item.actor}</span> {item.message}
+          </div>
+          <span className={styles.time}>{item.timeAgo} ago</span>
+        </div>
+      </article>
+    ))
+  } else if (tab === 'messages') {
+    tabContent = threads.map((thread) => {
           const isActive = thread.id === activeConversationId
           const draftValue = drafts[thread.id] ?? ''
           return (
@@ -263,6 +300,45 @@ export default function Inbox() {
             </article>
           )
         })
+  } else {
+    tabContent = (
+      <div className={styles.contactsPanel}>
+        <form className={styles.contactsForm} onSubmit={checkContacts}>
+          <label>
+            <span>Paste contacts (email addresses)</span>
+            <textarea
+              rows={3}
+              value={contactInput}
+              onChange={(event) => setContactInput(event.target.value)}
+              placeholder="friend@example.com, pastor@church.org"
+            />
+          </label>
+          <button type="submit" disabled={contactsBusy}>
+            {contactsBusy ? 'Checking...' : 'Find contacts on Godlyme'}
+          </button>
+        </form>
+
+        {contactsError ? <div className={styles.contactError}>{contactsError}</div> : null}
+
+        {contactMatches.length ? (
+          <div className={styles.contactList}>
+            {contactMatches.map((match) => (
+              <article key={match.id} className={styles.contactCard}>
+                <div className={styles.contactAvatar}>{match.handle.slice(1, 2).toUpperCase()}</div>
+                <div className={styles.contactDetails}>
+                  <strong>{match.name}</strong>
+                  <span>{match.handle}</span>
+                  <small>
+                    {match.church || 'Community builder'} {match.country ? `· ${match.country}` : ''}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
 
   return (
     <div className={styles.inbox}>
@@ -285,6 +361,13 @@ export default function Inbox() {
           onClick={() => setTab('messages')}
         >
           Messages
+        </button>
+        <button
+          type="button"
+          className={tab === 'contacts' ? styles.tabActive : styles.tab}
+          onClick={() => setTab('contacts')}
+        >
+          Contacts
         </button>
       </div>
 

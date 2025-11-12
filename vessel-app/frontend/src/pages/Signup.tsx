@@ -13,6 +13,11 @@ export default function Signup() {
   const [church, setChurch] = useState("")
   const [country, setCountry] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [verificationEmail, setVerificationEmail] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
+  const [verificationError, setVerificationError] = useState<string | null>(null)
+  const [verificationBusy, setVerificationBusy] = useState(false)
   const [busy, setBusy] = useState(false)
   const navigate = useNavigate()
 
@@ -70,15 +75,55 @@ export default function Signup() {
         photo: null,
       })
       setError(null)
-      window.setTimeout(() => {
-        console.info(`[Simulated email] Welcome message sent to ${trimmedEmail}.`)
-      })
-      navigate("/profile/me")
+      setSuccess(`Account created! We sent a verification code to ${trimmedEmail}.`)
+      setVerificationEmail(trimmedEmail)
+      setVerificationCode("")
+      setVerificationError(null)
+      setPassword("")
+      setConfirmPassword("")
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to save your profile right now."
       setError(message)
+      setSuccess(null)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function onVerifyCode(event: React.FormEvent) {
+    event.preventDefault()
+    if (!verificationEmail) return
+    const trimmedCode = verificationCode.trim()
+    if (!trimmedCode) {
+      setVerificationError("Enter the code from your email.")
+      return
+    }
+    setVerificationBusy(true)
+    try {
+      await contentService.verifyEmailCode(verificationEmail, trimmedCode)
+      setVerificationError(null)
+      setSuccess("Email verified! You can now sign in.")
+      window.setTimeout(() => navigate("/login"), 1200)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to verify that code right now."
+      setVerificationError(message)
+    } finally {
+      setVerificationBusy(false)
+    }
+  }
+
+  async function onResendCode() {
+    if (!verificationEmail) return
+    setVerificationBusy(true)
+    try {
+      await contentService.resendVerification(verificationEmail)
+      setVerificationError(null)
+      setSuccess(`We sent a new code to ${verificationEmail}.`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to resend the code right now."
+      setVerificationError(message)
+    } finally {
+      setVerificationBusy(false)
     }
   }
 
@@ -86,7 +131,34 @@ export default function Signup() {
     <div className={styles.signup}>
       <h1>Create your Vessel profile</h1>
       <p>Choose a display name so your worship moments and testimonies are linked to you.</p>
-      <form className={styles.form} onSubmit={submit}>
+      {success ? <div className={styles.success}>{success}</div> : null}
+      {verificationEmail ? (
+        <div className={styles.verificationBox}>
+          <p>
+            Enter the 6-digit code we emailed to <strong>{verificationEmail}</strong> to activate your account.
+          </p>
+          <form className={styles.codeForm} onSubmit={onVerifyCode}>
+            <input
+              className={styles.codeInput}
+              value={verificationCode}
+              onChange={(e) => setVerificationCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+              placeholder="123456"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              disabled={verificationBusy}
+            />
+            <button type="submit" disabled={verificationBusy || verificationCode.length < 6}>
+              {verificationBusy ? "Verifying..." : "Verify email"}
+            </button>
+          </form>
+          <button type="button" className={styles.linkButton} onClick={onResendCode} disabled={verificationBusy}>
+            Resend code
+          </button>
+          {verificationError ? <div className={styles.error}>{verificationError}</div> : null}
+        </div>
+      ) : (
+        <form className={styles.form} onSubmit={submit}>
         <label>
           <span>Display name</span>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Hope Chapel Youth" disabled={busy} />
@@ -150,7 +222,8 @@ export default function Signup() {
         <button type="button" className={styles.secondary} onClick={() => navigate("/login")} disabled={busy}>
           I already have an account
         </button>
-      </form>
+        </form>
+      )}
     </div>
   )
 }

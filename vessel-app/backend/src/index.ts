@@ -1,10 +1,25 @@
 import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
+import path from 'node:path'
+import fs from 'node:fs'
 import { verifyConnections, shutdownConnections } from './clients'
+import authRouter from './routes/auth'
+import contactsRouter from './routes/contacts'
+import followRouter from './routes/follow'
+import videoEngagementRouter from './routes/videoEngagement'
+import feedRouter from './routes/feed'
+import { ensureUsersTable } from './services/userService'
+import { ensureFollowPrereqs } from './services/followService'
+import { ensureVideoEngagementTables } from './services/videoEngagementService'
+import { ensureVideoFeedTables } from './services/videoFeedService'
 
 const app = express()
 app.use(cors())
+app.use(express.json({ limit: '1mb' }))
+const uploadsDir = path.resolve(process.cwd(), 'uploads')
+fs.mkdirSync(uploadsDir, { recursive: true })
+app.use('/uploads', express.static(uploadsDir))
 
 const DEFAULT_PORT = 4000
 
@@ -42,12 +57,22 @@ app.get('/api/health', async (_req, res) => {
   }
 })
 
+app.use('/api/auth', authRouter)
+app.use('/api/contacts', contactsRouter)
+app.use('/api/follows', followRouter)
+app.use('/api/feed', feedRouter)
+app.use('/api/videos', videoEngagementRouter)
+
 async function start() {
   let port: number
 
   try {
     port = resolvePort(process.env.PORT)
     await verifyConnections()
+    await ensureUsersTable()
+    await ensureFollowPrereqs()
+    await ensureVideoEngagementTables()
+    await ensureVideoFeedTables()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to connect to external services'
     // eslint-disable-next-line no-console

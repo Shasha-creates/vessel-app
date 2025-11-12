@@ -2,6 +2,7 @@ import React from "react"
 import { formatLikes } from "../services/mockData"
 import type { Video } from "../services/contentService"
 import styles from "./VideoCard.module.css"
+import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon } from "./icons"
 
 type Props = {
   video: Video
@@ -37,7 +38,18 @@ export default function VideoCard({
   const tags = video.tags.slice(0, 3)
   const handle = video.user.id ? `@${video.user.id.replace(/\s+/g, "").toLowerCase()}` : `@${slugify(video.user.name)}`
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
-  const [muted, setMuted] = React.useState(true)
+  const [muted, setMuted] = React.useState(false)
+  const [expandDescription, setExpandDescription] = React.useState(false)
+  const DESCRIPTION_PREVIEW_LIMIT = 20
+  React.useEffect(() => {
+    setExpandDescription(false)
+  }, [video.id])
+  const descriptionText = video.description ?? ""
+  const shouldClampDescription = descriptionText.length > DESCRIPTION_PREVIEW_LIMIT
+  const displayDescription =
+    expandDescription || !shouldClampDescription
+      ? descriptionText
+      : `${descriptionText.slice(0, DESCRIPTION_PREVIEW_LIMIT).trimEnd()}...`
 
   React.useEffect(() => {
     const node = videoRef.current
@@ -64,12 +76,12 @@ export default function VideoCard({
     }
   }, [isActive, muted])
 
-  const soundLabel = muted ? "Unmute" : "Mute"
-  const soundCount = !isActive ? "Off" : muted ? "Off" : "On"
+  const soundLabel = "Sound"
+  const soundCount = "On"
 
   const actions: Array<{
     key: string
-    icon: string
+    icon: React.ReactNode
     count: string
     label: string
     onClick?: (clip: Video) => void
@@ -77,24 +89,41 @@ export default function VideoCard({
   }> = [
     {
       key: "sound",
-      icon: muted || !isActive ? "🔇" : "🔊",
+      icon: <VolumeIcon muted={false} width={22} height={22} />,
       count: soundCount,
       label: soundLabel,
-      onClick: () => setMuted((value) => !value),
-      active: isActive && !muted,
+      active: true,
     },
-    { key: "like", icon: "♥", count: likes, label: "Likes", onClick: onLike },
-    { key: "comment", icon: "💬", count: formatCount(video.comments ?? 0), label: "Comments", onClick: onComment },
+    { key: "like", icon: <ThumbIcon width={22} height={22} />, count: likes, label: "Likes", onClick: onLike },
+    {
+      key: "comment",
+      icon: <CommentIcon width={22} height={22} />,
+      count: formatCount(video.comments ?? 0),
+      label: "Comments",
+      onClick: onComment,
+    },
     {
       key: "save",
-      icon: isBookmarked ? "💾" : "📌",
+      icon: <BookmarkIcon width={22} height={22} />,
       count: formatCount(video.bookmarks ?? 0),
       label: isBookmarked ? "Saved" : "Save",
       onClick: onBookmark,
       active: isBookmarked,
     },
-    { key: "donate", icon: "🎁", count: formatCount(video.donations ?? 0), label: "Donate", onClick: onDonate },
-    { key: "share", icon: "↗", count: formatCount(video.shares ?? 0), label: "Share", onClick: onShare },
+    {
+      key: "donate",
+      icon: <DonateIcon width={22} height={22} />,
+      count: formatCount(video.donations ?? 0),
+      label: "Donate",
+      onClick: onDonate,
+    },
+    {
+      key: "share",
+      icon: <ShareIcon width={22} height={22} />,
+      count: formatCount(video.shares ?? 0),
+      label: "Share",
+      onClick: onShare,
+    },
   ]
 
   return (
@@ -138,7 +167,20 @@ export default function VideoCard({
         </div>
         <span className={styles.category}>{video.category}</span>
         <h3 className={styles.title}>{video.title}</h3>
-        <p className={styles.description}>{video.description}</p>
+        {descriptionText ? (
+          <div className={styles.descriptionBlock}>
+            <p className={styles.description}>{displayDescription}</p>
+            {shouldClampDescription ? (
+              <button
+                type="button"
+                className={styles.descriptionToggle}
+                onClick={() => setExpandDescription((value) => !value)}
+              >
+                {expandDescription ? "See less" : "See more"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {scripture ? (
           <div className={styles.scripture}>
             {scripture.book} {scripture.chapter}:{scripture.verses}
@@ -163,7 +205,9 @@ export default function VideoCard({
             onClick={() => action.onClick?.(video)}
             aria-label={`${action.label} for ${video.title}`}
           >
-            <span className={styles.actionIcon}>{action.icon}</span>
+            <span className={styles.actionIcon} aria-hidden="true">
+              {action.icon}
+            </span>
             <span className={styles.actionCount}>{action.count}</span>
           </button>
         ))}
@@ -196,3 +240,4 @@ function formatCount(value: number) {
   if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}K`
   return `${value}`
 }
+

@@ -17,7 +17,8 @@ const ACTIVE_USER_CHURCH_KEY = 'vessel_user_church'
 const ACTIVE_USER_COUNTRY_KEY = 'vessel_user_country'
 const ACTIVE_USER_PHOTO_KEY = 'vessel_user_photo'
 const ACTIVE_USER_EMAIL_KEY = 'vessel_user_email'
-const ACCOUNTS_STORAGE_KEY = 'vessel_accounts_v1'
+const ACTIVE_USER_VERIFIED_KEY = 'vessel_user_verified'
+const AUTH_TOKEN_KEY = 'vessel_auth_token'
 const UPLOAD_STORAGE_KEY = 'vessel_user_uploads_v1'
 const FOLLOWING_STORAGE_KEY = 'vessel_following_ids_v1'
 const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
@@ -30,6 +31,9 @@ const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
 const MODERATION_CONTEXT_PROFILE = 'profile'
 const MODERATION_CONTEXT_UPLOAD = 'upload'
 const DEFAULT_SAVED_IDS = ['psalm23-reflection']
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const GUEST_FOLLOW_DEFAULTS = ['sarah-grace', 'river-city-worship', 'pastor-ana'].map((id) => normalizeId(id))
+let remoteFeed: Video[] = []
 
 type StoredUpload = Omit<Video, 'videoUrl'>
 type CommentableVideo = Video
@@ -41,6 +45,7 @@ type ActiveProfile = {
   country: string
   email: string
   photo?: string
+  isVerified: boolean
 }
 
 type ActiveProfileUpdate = {
@@ -50,16 +55,7 @@ type ActiveProfileUpdate = {
   country?: string | null
   email?: string | null
   photo?: string | null
-}
-
-type AccountRecord = {
-  id: string
-  name: string
-  email: string
-  passwordHash: string
-  church: string
-  country: string
-  photo?: string
+  isVerified?: boolean | null
 }
 
 type EmailVerificationResult = {
@@ -67,13 +63,57 @@ type EmailVerificationResult = {
   message?: string
 }
 
+type ApiUser = {
+  id: string
+  handle: string
+  name: string
+  email: string
+  church: string | null
+  country: string | null
+  photoUrl: string | null
+  isVerified: boolean
+}
+
+type ContactMatch = {
+  id: string
+  handle: string
+  name: string
+  email: string
+  church: string | null
+  country: string | null
+  photoUrl: string | null
+}
+
+type ApiFeedVideo = {
+  id: string
+  title: string
+  description?: string | null
+  category?: string | null
+  tags?: string[]
+  durationSeconds?: number
+  videoUrl: string
+  thumbnailUrl?: string | null
+  createdAt: string
+  stats?: {
+    likes?: number
+    comments?: number
+  }
+  user: {
+    id: string
+    name?: string | null
+    handle: string
+    church?: string | null
+    country?: string | null
+    photoUrl?: string | null
+  }
+}
+
 const listeners = new Set<Listener>()
 let uploadsHydrated = false
 let uploads: Video[] = []
-let accountsHydrated = false
-let accounts: AccountRecord[] = []
 let followedHydrated = false
 let followedIds = new Set<string>()
+let followingFetchPromise: Promise<void> | null = null
 let bookmarksHydrated = false
 let bookmarkedIds = new Set<string>()
 
@@ -122,6 +162,11 @@ function getActiveUserCountry(): string {
   return window.localStorage.getItem(ACTIVE_USER_COUNTRY_KEY) || ''
 }
 
+function getActiveUserVerified(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem(ACTIVE_USER_VERIFIED_KEY) === 'true'
+}
+
 function verifyEmailStructure(email: string): EmailVerificationResult {
   const trimmed = email.trim().toLowerCase()
   if (!trimmed) return { valid: false, message: 'Enter an email' }
@@ -156,6 +201,108 @@ function getActiveUserPhoto(): string {
 function getActiveUserEmail(): string {
   if (typeof window === 'undefined') return ''
   return window.localStorage.getItem(ACTIVE_USER_EMAIL_KEY) || ''
+}
+
+function getStoredAuthToken(): string | null {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(AUTH_TOKEN_KEY)
+}
+
+function setStoredAuthToken(token: string | null): void {
+  if (typeof window === 'undefined') return
+  if (token) {
+    window.localStorage.setItem(AUTH_TOKEN_KEY, token)
+  } else {
+    window.localStorage.removeItem(AUTH_TOKEN_KEY)
+  }
+}
+
+function requireApiBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new Error('VITE_API_BASE_URL is not configured for this build.')
+  }
+  return API_BASE_URL
+}
+
+async function requestJson<T>(path: string, init: RequestInit = {}, includeAuth = false): Promise<T> {
+  const baseUrl = requireApiBaseUrl()
+  const headers = new Headers(init.headers || {})
+  headers.set('Accept', 'application/json')
+  if (init.body && !(init.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json')
+  }
+  if (includeAuth) {
+    const token = getStoredAuthToken()
+    if (!token) {
+      throw new Error('Please sign in to continue.')
+    }
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    headers,
+  })
+
+  let payload: unknown = null
+  const text = await response.text()
+  if (text) {
+    try {
+      payload = JSON.parse(text)
+    } catch {
+      payload = text
+    }
+  }
+
+  if (!response.ok) {
+    const message = typeof payload === 'object' && payload && 'message' in payload ? (payload as any).message : null
+    const error = new Error(message || 'Request failed. Please try again.')
+    ;(error as any).status = response.status
+    ;(error as any).payload = payload
+    throw error
+  }
+
+  return payload as T
+}
+
+async function postJson<T>(path: string, body: unknown, includeAuth = false): Promise<T> {
+  return requestJson<T>(
+    path,
+    {
+      method: 'POST',
+      body: JSON.stringify(body),
+    },
+    includeAuth
+  )
+}
+
+async function getJson<T>(path: string, includeAuth = false): Promise<T> {
+  return requestJson<T>(path, { method: 'GET' }, includeAuth)
+}
+
+async function deleteJson(path: string, includeAuth = false): Promise<void> {
+  await requestJson(path, { method: 'DELETE' }, includeAuth)
+}
+
+function applyApiUserSession(user: ApiUser, token?: string | null): ActiveProfile {
+  if (token) {
+    setStoredAuthToken(token)
+    void refreshFollowingFromServer(true)
+  } else if (token === null) {
+    setStoredAuthToken(null)
+    followedHydrated = false
+    followedIds.clear()
+  }
+
+  return updateActiveProfile({
+    id: user.handle || user.id,
+    name: user.name,
+    church: user.church ?? '',
+    country: user.country ?? '',
+    email: user.email,
+    photo: user.photoUrl ?? undefined,
+    isVerified: user.isVerified,
+  })
 }
 
 function normalizeId(value: string): string {
@@ -210,31 +357,6 @@ function simulateNetwork<T>(fn: () => T, failureRate = NETWORK_FAILURE_RATE): Pr
   })
 }
 
-function ensureAccountsHydrated() {
-  if (accountsHydrated || typeof window === 'undefined') return
-  accountsHydrated = true
-  const raw = window.localStorage.getItem(ACCOUNTS_STORAGE_KEY)
-  if (!raw) {
-    accounts = []
-    return
-  }
-  try {
-    const parsed = JSON.parse(raw) as Array<Partial<AccountRecord> & { country?: string }>
-    accounts = parsed.map((record) => ({
-      ...record,
-      country: record.country ?? '',
-    })) as AccountRecord[]
-  } catch {
-    accounts = []
-  }
-}
-
-function persistAccounts() {
-  if (typeof window === 'undefined') return
-  ensureAccountsHydrated()
-  window.localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts))
-}
-
 function ensureUploadsHydrated() {
   if (uploadsHydrated || typeof window === 'undefined') return
   uploadsHydrated = true
@@ -256,6 +378,11 @@ function persistUploads() {
 function ensureFollowingHydrated() {
   if (followedHydrated || typeof window === 'undefined') return
   followedHydrated = true
+  if (getStoredAuthToken()) {
+    followedIds = new Set()
+    void refreshFollowingFromServer(true)
+    return
+  }
   const raw = window.localStorage.getItem(FOLLOWING_STORAGE_KEY)
   if (raw) {
     try {
@@ -266,13 +393,35 @@ function ensureFollowingHydrated() {
       // ignore and fall back to defaults
     }
   }
-  followedIds = new Set(['sarah-grace', 'river-city-worship', 'pastor-ana'].map(normalizeId))
+  followedIds = new Set(GUEST_FOLLOW_DEFAULTS)
   window.localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify([...followedIds]))
 }
 
 function persistFollowing() {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined' || getStoredAuthToken()) return
   window.localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify([...followedIds]))
+}
+
+function refreshFollowingFromServer(force = false): Promise<void> | undefined {
+  if (!getStoredAuthToken()) {
+    return undefined
+  }
+  if (followingFetchPromise && !force) {
+    return followingFetchPromise
+  }
+  followingFetchPromise = getJson<{ following: ApiUser[] }>('/api/follows/following', true)
+    .then((payload) => {
+      followedIds = new Set(payload.following.map((user) => normalizeId(user.handle || user.id)))
+      notify()
+    })
+    .catch((error) => {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to refresh following list', error)
+    })
+    .finally(() => {
+      followingFetchPromise = null
+    })
+  return followingFetchPromise
 }
 
 function getFollowedIds(): Set<string> {
@@ -332,6 +481,7 @@ function updateActiveProfile(partial: ActiveProfileUpdate): ActiveProfile {
   const country = partial.country === undefined ? getActiveUserCountry() : partial.country?.trim() ?? ''
   const email = partial.email === undefined ? getActiveUserEmail() : partial.email?.trim().toLowerCase() ?? ''
   const photo = partial.photo === undefined ? getActiveUserPhoto() : partial.photo?.trim() ?? ''
+  const isVerified = partial.isVerified === undefined ? getActiveUserVerified() : Boolean(partial.isVerified)
 
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(ACTIVE_USER_NAME_KEY, name)
@@ -356,9 +506,14 @@ function updateActiveProfile(partial: ActiveProfileUpdate): ActiveProfile {
     } else {
       window.localStorage.removeItem(ACTIVE_USER_EMAIL_KEY)
     }
+    if (isVerified) {
+      window.localStorage.setItem(ACTIVE_USER_VERIFIED_KEY, 'true')
+    } else {
+      window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
+    }
   }
 
-  const profile: ActiveProfile = { id, name, church, country, email, photo }
+  const profile: ActiveProfile = { id, name, church, country, email, photo, isVerified }
   notify()
   return profile
 }
@@ -371,6 +526,7 @@ function getActiveProfile(): ActiveProfile {
     country: getActiveUserCountry(),
     email: getActiveUserEmail(),
     photo: getActiveUserPhoto(),
+    isVerified: getActiveUserVerified(),
   }
 }
 
@@ -378,7 +534,7 @@ function signInWithDisplayName(displayName: string): ActiveProfile {
   enforceModeration(MODERATION_CONTEXT_PROFILE, [{ label: 'Display name', text: displayName }])
   const name = displayName.trim() || 'Guest Creator'
   const id = slugifyDisplayName(name)
-  return updateActiveProfile({ id, name, church: null, country: null })
+  return updateActiveProfile({ id, name, church: null, country: null, isVerified: false })
 }
 
 function signOutToGuest(): ActiveProfile {
@@ -389,7 +545,13 @@ function signOutToGuest(): ActiveProfile {
     window.localStorage.removeItem(ACTIVE_USER_ID_KEY)
     window.localStorage.removeItem(ACTIVE_USER_PHOTO_KEY)
     window.localStorage.removeItem(ACTIVE_USER_EMAIL_KEY)
+    window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
+    window.localStorage.removeItem(AUTH_TOKEN_KEY)
+    window.localStorage.removeItem(FOLLOWING_STORAGE_KEY)
   }
+  followedIds = new Set()
+  followedHydrated = false
+  followingFetchPromise = null
   return updateActiveProfile({
     id: 'guest',
     name: 'Guest Creator',
@@ -397,10 +559,11 @@ function signOutToGuest(): ActiveProfile {
     country: null,
     photo: null,
     email: null,
+    isVerified: false,
   })
 }
 
-function createAccount(input: {
+async function createAccount(input: {
   name: string
   handle: string
   email: string
@@ -409,113 +572,25 @@ function createAccount(input: {
   country?: string
   photo?: string | null
 }): Promise<ActiveProfile> {
-  return simulateNetwork(() => {
-    const name = input.name.trim()
-    if (!name) {
-      throw new Error('Display name is required')
-    }
-    const normalizedHandle = sanitizeHandle(input.handle)
-    if (!normalizedHandle) {
-      throw new Error('Handle is required')
-    }
-    const email = input.email.trim().toLowerCase()
-    if (!email) {
-      throw new Error('Email is required')
-    }
-    const emailCheck = verifyEmailStructure(email)
-    if (!emailCheck.valid) {
-      throw new Error(emailCheck.message || 'We could not verify this email address. Double-check and try again.')
-    }
-    const password = input.password.trim()
-    if (password.length < 6) {
-      throw new Error('Password must be at least 6 characters')
-    }
-
-    enforceModeration(MODERATION_CONTEXT_PROFILE, [
-      { label: 'Display name', text: name },
-      { label: 'Handle', text: input.handle },
-      { label: 'Church / Community', text: input.church ?? '' },
-      { label: 'Country', text: input.country ?? '' },
-    ])
-
-    ensureAccountsHydrated()
-    if (accounts.some((acct) => acct.email === email)) {
-      throw new Error('Email already has an account. Try signing in instead.')
-    }
-    if (accounts.some((acct) => acct.id === normalizedHandle)) {
-      throw new Error('Handle already in use. Choose a different one.')
-    }
-
-    const record: AccountRecord = {
-      id: normalizedHandle,
-      name,
-      email,
-      church: input.church?.trim() ?? '',
-      country: input.country?.trim() ?? '',
-      photo: input.photo ?? undefined,
-      passwordHash: hashPassword(email, password),
-    }
-
-    accounts.push(record)
-    persistAccounts()
-    return updateActiveProfile({
-      id: record.id,
-      name: record.name,
-      church: record.church,
-      country: record.country,
-      email: record.email,
-      photo: record.photo,
-    })
-  })
-}
-
-function signInWithCredentials(email: string, password: string): Promise<ActiveProfile> {
-  return simulateNetwork(() => {
-    ensureAccountsHydrated()
-    const normalizedEmail = email.trim().toLowerCase()
-    const account = accounts.find((acct) => acct.email === normalizedEmail)
-    if (!account) {
-      throw new Error('No account found for that email.')
-    }
-    if (account.passwordHash !== hashPassword(normalizedEmail, password.trim())) {
-      throw new Error('Incorrect password. Please try again.')
-    }
-    return updateActiveProfile({
-      id: account.id,
-      name: account.name,
-      church: account.church,
-      country: account.country,
-      email: account.email,
-      photo: account.photo,
-    })
-  })
-}
-
-function completeSignup(input: {
-  name: string
-  handle: string
-  church?: string
-  country?: string
-  photo?: string | null
-  email?: string
-  password?: string
-}): Promise<ActiveProfile> {
-  return simulateNetwork(() => {
-    const name = input.name.trim()
-    if (!name) {
-      throw new Error('Display name is required')
-    }
-    const normalizedHandle = sanitizeHandle(input.handle)
-    if (!normalizedHandle) {
-      throw new Error('Handle is required')
+  const name = input.name.trim()
+  if (!name) {
+    throw new Error('Display name is required')
   }
-  const desiredEmail = (input.email?.trim().toLowerCase() ?? getActiveUserEmail()).trim()
-  if (!desiredEmail) {
+  const normalizedHandle = sanitizeHandle(input.handle)
+  if (!normalizedHandle) {
+    throw new Error('Handle is required')
+  }
+  const email = input.email.trim().toLowerCase()
+  if (!email) {
     throw new Error('Email is required')
   }
-  const emailCheck = verifyEmailStructure(desiredEmail)
+  const emailCheck = verifyEmailStructure(email)
   if (!emailCheck.valid) {
     throw new Error(emailCheck.message || 'We could not verify this email address. Double-check and try again.')
+  }
+  const password = input.password.trim()
+  if (password.length < 6) {
+    throw new Error('Password must be at least 6 characters')
   }
 
   enforceModeration(MODERATION_CONTEXT_PROFILE, [
@@ -525,58 +600,158 @@ function completeSignup(input: {
     { label: 'Country', text: input.country ?? '' },
   ])
 
-  ensureAccountsHydrated()
-    const currentEmail = getActiveUserEmail()
-    let account = accounts.find((acct) => acct.email === currentEmail)
+  const payload = await postJson<{ user: ApiUser; message: string; verificationUrl?: string }>('/api/auth/signup', {
+    name,
+    handle: normalizedHandle,
+    email,
+    password,
+    church: input.church?.trim() || undefined,
+    country: input.country?.trim() || undefined,
+  })
 
-    if (!account) {
-      if (!input.password?.trim()) {
-        throw new Error('Set a password before saving your profile.')
-      }
-      if (accounts.some((acct) => acct.email === desiredEmail)) {
-        throw new Error('Email already registered. Use another email.')
-      }
-      if (accounts.some((acct) => acct.id === normalizedHandle)) {
-        throw new Error('Handle already in use. Choose a different one.')
-      }
-      account = {
-        id: normalizedHandle,
-        name,
-        email: desiredEmail,
-        church: input.church?.trim() ?? '',
-        country: input.country?.trim() ?? '',
-        photo: input.photo ?? undefined,
-        passwordHash: hashPassword(desiredEmail, input.password!.trim()),
-      }
-      accounts.push(account)
-    } else {
-      if (account.id !== normalizedHandle && accounts.some((acct) => acct.id === normalizedHandle)) {
-        throw new Error('Handle already in use. Choose a different one.')
-      }
-      if (account.email !== desiredEmail && accounts.some((acct) => acct.email === desiredEmail)) {
-        throw new Error('Email already registered. Use another email.')
-      }
-      account.id = normalizedHandle
-      account.name = name
-      account.church = input.church?.trim() ?? ''
-      account.country = input.country?.trim() ?? ''
-      account.photo = input.photo ?? undefined
-      account.email = desiredEmail
-      if (input.password?.trim()) {
-        account.passwordHash = hashPassword(desiredEmail, input.password.trim())
-      }
+  setStoredAuthToken(null)
+  return applyApiUserSession(payload.user, null)
+}
+
+async function signInWithCredentials(email: string, password: string): Promise<ActiveProfile> {
+  const trimmedEmail = email.trim().toLowerCase()
+  if (!trimmedEmail) {
+    throw new Error('Enter your email')
+  }
+  if (!password.trim()) {
+    throw new Error('Enter your password')
+  }
+
+  const payload = await postJson<{ token: string; user: ApiUser }>('/api/auth/login', {
+    email: trimmedEmail,
+    password,
+  })
+
+  return applyApiUserSession(payload.user, payload.token)
+}
+
+function completeSignup(input: {
+  name: string
+  handle: string
+  church?: string
+  country?: string
+  photo?: string | null
+  email?: string
+}): Promise<ActiveProfile> {
+  return Promise.resolve().then(() => {
+    const name = input.name.trim()
+    if (!name) {
+      throw new Error('Display name is required')
+    }
+    const normalizedHandle = sanitizeHandle(input.handle)
+    if (!normalizedHandle) {
+      throw new Error('Handle is required')
+    }
+    const desiredEmail = (input.email?.trim().toLowerCase() ?? getActiveUserEmail()).trim()
+    if (!desiredEmail) {
+      throw new Error('Email is required')
+    }
+    const emailCheck = verifyEmailStructure(desiredEmail)
+    if (!emailCheck.valid) {
+      throw new Error(emailCheck.message || 'We could not verify this email address. Double-check and try again.')
     }
 
-    persistAccounts()
+    enforceModeration(MODERATION_CONTEXT_PROFILE, [
+      { label: 'Display name', text: name },
+      { label: 'Handle', text: input.handle },
+      { label: 'Church / Community', text: input.church ?? '' },
+      { label: 'Country', text: input.country ?? '' },
+    ])
+
     return updateActiveProfile({
-      id: account.id,
-      name: account.name,
-      church: account.church,
-      country: account.country,
-      email: account.email,
-      photo: account.photo,
+      id: normalizedHandle,
+      name,
+      church: input.church?.trim() ?? '',
+      country: input.country?.trim() ?? '',
+      email: desiredEmail,
+      photo: input.photo ?? undefined,
+      isVerified: getActiveUserVerified(),
     })
   })
+}
+
+async function verifyEmailCode(email: string, code: string): Promise<ActiveProfile> {
+  const trimmedEmail = email.trim().toLowerCase()
+  const trimmedCode = code.trim()
+  if (!trimmedEmail) {
+    throw new Error('Enter your email.')
+  }
+  if (!trimmedCode) {
+    throw new Error('Enter the verification code.')
+  }
+  const payload = await postJson<{ user: ApiUser; message: string }>('/api/auth/verify-email', {
+    email: trimmedEmail,
+    code: trimmedCode,
+  })
+  return applyApiUserSession(payload.user, null)
+}
+
+async function resendVerification(email: string): Promise<void> {
+  const trimmedEmail = email.trim().toLowerCase()
+  if (!trimmedEmail) {
+    throw new Error('Enter your email')
+  }
+  await postJson<{ message: string }>('/api/auth/resend-verification', { email: trimmedEmail })
+}
+
+async function matchContactsByEmail(emails: string[]): Promise<ContactMatch[]> {
+  const normalized = emails
+    .map((value) => value.trim().toLowerCase())
+    .filter((value, index, array) => value.length > 0 && array.indexOf(value) === index)
+  if (!normalized.length) {
+    return []
+  }
+  const hashes = await Promise.all(normalized.map(hashEmailForMatch))
+  const payload = await postJson<{ matches: ContactMatch[] }>('/api/contacts/match', { hashes })
+  return payload.matches
+}
+
+async function hashEmailForMatch(value: string): Promise<string> {
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) {
+    return ''
+  }
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    const encoder = new TextEncoder()
+    const data = encoder.encode(normalized)
+    const digest = await window.crypto.subtle.digest('SHA-256', data)
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('')
+  }
+  return hashPassword(normalized, normalized)
+}
+
+function mapApiVideo(video: ApiFeedVideo): Video {
+  const likeCount = video.stats?.likes ?? 0
+  return {
+    id: video.id,
+    title: video.title,
+    description: video.description ?? '',
+    user: {
+      id: video.user.id,
+      name: video.user.name || video.user.handle,
+      churchHome: video.user.church ?? undefined,
+      avatar: video.user.photoUrl ?? undefined,
+    },
+    videoUrl: video.videoUrl,
+    thumbnailUrl: video.thumbnailUrl || video.videoUrl,
+    category: (video.category as ContentCategory) || 'testimony',
+    tags: video.tags ?? [],
+    durationSec: video.durationSeconds ?? 0,
+    likes: likeCount,
+    likesDisplay: formatLikes(likeCount),
+    comments: video.stats?.comments ?? 0,
+    bookmarks: 0,
+    shares: 0,
+    donations: 0,
+    publishedAt: video.createdAt,
+  }
 }
 
 function ensureLibraryHydrated() {
@@ -585,7 +760,7 @@ function ensureLibraryHydrated() {
 
 function getLibrary(): Video[] {
   ensureLibraryHydrated()
-  return [...uploads, ...seedVideos]
+  return [...remoteFeed, ...uploads, ...seedVideos]
 }
 
 function notify() {
@@ -617,6 +792,7 @@ function sortForFeed(clips: Video[]): Video[] {
 }
 
 export const contentService = {
+  matchContactsByEmail,
   subscribe(listener: Listener) {
     listeners.add(listener)
     return () => listeners.delete(listener)
@@ -626,20 +802,32 @@ export const contentService = {
   completeSignup,
   createAccount,
   signInWithCredentials,
+  verifyEmailCode,
+  resendVerification,
   signIn(displayName: string) {
     return signInWithDisplayName(displayName)
   },
   signOut() {
+    setStoredAuthToken(null)
     return signOutToGuest()
   },
   suggestHandle(name: string) {
     return generateHandleSuggestion(name)
   },
   async followUser(userId: string) {
+    const normalized = normalizeId(userId.replace(/^@/, ''))
+    if (!normalized) {
+      return false
+    }
+    if (getStoredAuthToken()) {
+      await postJson(`/api/follows/${encodeURIComponent(normalized)}`, {}, true)
+      followedIds.add(normalized)
+      notify()
+      return true
+    }
     return simulateNetwork(() => {
       ensureFollowingHydrated()
-      const normalized = normalizeId(userId)
-      if (normalized && !followedIds.has(normalized)) {
+      if (!followedIds.has(normalized)) {
         followedIds.add(normalized)
         persistFollowing()
         notify()
@@ -648,15 +836,26 @@ export const contentService = {
     })
   },
   async unfollowUser(userId: string) {
+    const normalized = normalizeId(userId.replace(/^@/, ''))
+    if (!normalized) {
+      return false
+    }
+    if (getStoredAuthToken()) {
+      await deleteJson(`/api/follows/${encodeURIComponent(normalized)}`, true)
+      if (followedIds.has(normalized)) {
+        followedIds.delete(normalized)
+        notify()
+      }
+      return false
+    }
     return simulateNetwork(() => {
       ensureFollowingHydrated()
-      const normalized = normalizeId(userId)
       if (followedIds.has(normalized)) {
         followedIds.delete(normalized)
         persistFollowing()
         notify()
       }
-      return true
+      return false
     })
   },
   isFollowing(userId: string) {
@@ -664,7 +863,8 @@ export const contentService = {
     return followedIds.has(normalizeId(userId))
   },
   toggleFollow(userId: string) {
-    if (followedIds.has(normalizeId(userId))) {
+    const normalized = normalizeId(userId.replace(/^@/, ''))
+    if (followedIds.has(normalized)) {
       return this.unfollowUser(userId).then(() => false)
     }
     return this.followUser(userId).then(() => true)
@@ -706,19 +906,23 @@ export const contentService = {
     return bookmarkedIds.has(clipId)
   },
   async fetchForYouFeed(): Promise<Video[]> {
-    const curated = filterFaithCentric(getLibrary())
-    return sortForFeed(curated)
+    const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/for-you')
+    const mapped = payload.videos.map(mapApiVideo)
+    remoteFeed = mapped
+    return mapped
   },
   async fetchFollowingFeed(): Promise<Video[]> {
-    const following = getFollowedIds()
-    const curated = filterFaithCentric(
-      getLibrary().filter((clip) => {
-        const clipId = normalizeId(clip.user.id)
-        const normalizedName = normalizeId(clip.user.name)
-        return following.has(clipId) || following.has(normalizedName)
-      })
-    )
-    return curated.length ? sortForFeed(curated) : []
+    try {
+      const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/following', true)
+      const mapped = payload.videos.map(mapApiVideo)
+      remoteFeed = mapped
+      return mapped
+    } catch (error) {
+      if ((error as any)?.status === 401) {
+        return []
+      }
+      throw error
+    }
   },
   async fetchCollectionFeed(collection: ContentCollection): Promise<Video[]> {
     const curated = filterFaithCentric(getLibrary().filter((clip) => clip.collection === collection))
@@ -738,10 +942,9 @@ export const contentService = {
     tags?: string[]
   }): Promise<Video> {
     const activeProfile = getActiveProfile()
-    const normalizedId = normalizeId(activeProfile.id || "")
-    const normalizedName = (activeProfile.name || "").trim().toLowerCase()
-    const isGuestProfile =
-      normalizedId === "guest" || normalizedName === "guest creator" || !activeProfile.email
+    const normalizedId = normalizeId(activeProfile.id || '')
+    const normalizedName = (activeProfile.name || '').trim().toLowerCase()
+    const isGuestProfile = normalizedId === 'guest' || normalizedName === 'guest creator' || !activeProfile.email
     if (isGuestProfile) {
       throw new Error('Sign in to your Vessel profile before uploading a video.')
     }
@@ -749,48 +952,63 @@ export const contentService = {
       { label: 'Title', text: input.title },
       { label: 'Description', text: input.description ?? '' },
     ])
-    const now = new Date()
-    const videoUrl = input.file ? URL.createObjectURL(input.file) : DEFAULT_VIDEO_PLACEHOLDER
-    const thumbnailUrl = input.file ? videoUrl : DEFAULT_THUMB_PLACEHOLDER
-    const clip: Video = {
-      id: `upload-${now.getTime()}`,
-      title: input.title || 'Untitled Testimony',
-      description: input.description || 'Shared on Vessel to encourage the community.',
-      user: {
-        id: getActiveUserId(),
-        name: getActiveUserName(),
-      },
-      videoUrl,
-      thumbnailUrl,
-      category: input.category ?? 'testimony',
-      tags: input.tags ?? ['community', 'testimony'],
-      durationSec: 0,
-      likes: 0,
-      likesDisplay: formatLikes(0),
-      comments: 0,
-      bookmarks: 0,
-      shares: 0,
-      donations: 0,
-      publishedAt: now.toISOString(),
-      collection: 'dawn-devotional',
+    const form = new FormData()
+    form.append('title', input.title.trim())
+    if (input.description) {
+      form.append('description', input.description)
     }
-
-    uploads.unshift(clip)
-    persistUploads()
+    if (input.category) {
+      form.append('category', input.category)
+    }
+    if (input.tags?.length) {
+      form.append('tags', JSON.stringify(input.tags))
+    }
+    if (input.file) {
+      form.append('file', input.file)
+    } else {
+      form.append('videoUrl', DEFAULT_VIDEO_PLACEHOLDER)
+      form.append('thumbnailUrl', DEFAULT_THUMB_PLACEHOLDER)
+    }
+    const payload = await requestJson<{ video: ApiFeedVideo }>(
+      '/api/feed/videos',
+      {
+        method: 'POST',
+        body: form,
+      },
+      true
+    )
+    const clip = mapApiVideo(payload.video)
+    remoteFeed = [clip, ...remoteFeed.filter((video) => video.id !== clip.id)]
     notify()
     return clip
   },
-  recordLike(clipId: string) {
+  async recordLike(clipId: string) {
+    if (getStoredAuthToken()) {
+      await postJson(`/api/videos/${encodeURIComponent(clipId)}/like`, {}, true)
+    }
+
     const clip = getLibrary().find((item) => item.id === clipId)
-    if (!clip) return
+    if (!clip) {
+      notify()
+      return
+    }
     clip.likes += 1
     clip.likesDisplay = formatLikes(clip.likes)
     persistIfUpload(clipId)
     notify()
   },
-  recordComment(clipId: string) {
+  async recordComment(clipId: string, body?: string) {
     const clip = getLibrary().find((item) => item.id === clipId)
     if (!clip) return
+
+    if (getStoredAuthToken()) {
+      await postJson(
+        `/api/videos/${encodeURIComponent(clipId)}/comments`,
+        { body: body || 'Amen! Thanks for sharing this.' },
+        true
+      )
+    }
+
     clip.comments = (clip.comments ?? 0) + 1
     persistIfUpload(clipId)
     notify()

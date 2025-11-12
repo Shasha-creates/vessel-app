@@ -325,9 +325,6 @@ function SignupForm({ activeProfile, onComplete, onSwitchMode, onClose }: Signup
           email: trimmedEmail,
           password: passwordValue,
         })
-        window.setTimeout(() => {
-          console.info(`[Simulated email] Welcome message sent to ${trimmedEmail}.`)
-        })
       }
       setError(null)
       onComplete()

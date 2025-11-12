@@ -170,11 +170,11 @@ export default function ForYou({ filter }: Props) {
                     contentService.recordShare(clip.id)
                     const shareUrl =
                       typeof window !== 'undefined' ? `${window.location.origin}/watch/${clip.id}` : `/watch/${clip.id}`
-                    if (navigator && 'share' in navigator) {
+                    if (typeof navigator !== 'undefined' && 'share' in navigator) {
                       navigator.share({ title: clip.title, url: shareUrl }).catch(() => {
                         window.open(shareUrl, '_blank')
                       })
-                    } else if (navigator?.clipboard) {
+                    } else if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
                       navigator.clipboard.writeText(shareUrl).catch(() => {
                         window.open(shareUrl, '_blank')
                       })
@@ -191,17 +191,6 @@ export default function ForYou({ filter }: Props) {
               </section>
             )
           })}
-        </div>
-        <div className={styles.dotRail}>
-          {visibleClips.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              className={i === index ? styles.dotActive : styles.dot}
-              onClick={() => scrollTo(i)}
-              aria-label={`Go to clip ${i + 1}`}
-            />
-          ))}
         </div>
       </div>
       {commentClip ? <CommentSheet clip={commentClip} onClose={() => setCommentClip(null)} /> : null}
