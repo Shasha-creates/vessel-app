@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420">
+  <defs>
+    <style>
+      .brand-fill { fill: #7a7350; }
+    </style>
+  </defs>
+
+  <path
+    class="brand-fill"
+    d="M242 36c-114.07 0-206 91.93-206 206s91.93 206 206 206h78v-66h-78c-77.2 0-140-62.8-140-140s62.8-140 140-140h78V36h-78z"
+  />
+  <rect class="brand-fill" x="348" y="100" width="78" height="174" />
+  <rect class="brand-fill" x="297" y="148" width="180" height="76" />
+  <text
+    class="brand-fill"
+    x="0"
+    y="380"
+    font-family="Montserrat, 'Segoe UI', sans-serif"
+    font-size="132"
+    font-weight="700"
+    letter-spacing="6"
+  >
+    GODLYME
+  </text>
+</svg>

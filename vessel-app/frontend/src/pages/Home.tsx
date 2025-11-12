@@ -2,6 +2,7 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import VideoCard from '../shared/VideoCard'
 import { contentService, type Video } from '../services/contentService'
+import { Media } from '../media'
 import styles from './Home.module.css'
 
 export default function Home() {
@@ -18,6 +19,7 @@ export default function Home() {
   return (
     <div className={styles.home}>
       <header className={styles.hero}>
+        <img src={Media.icons.logo} alt="Godlyme" className={styles.brandMark} />
         <h1>Vessel brings faith-filled stories to your daily scroll.</h1>
         <p>
           Explore worship moments, testimonies, and scripture meditations designed to strengthen your walk with Jesus

@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./vessel-app/backend
+    ports:
+      - "4000:4000"
+    env_file:
+      - ./vessel-app/backend/.env
+    environment:
+      PORT: 4000
+    restart: unless-stopped
