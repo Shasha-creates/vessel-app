@@ -5,7 +5,11 @@ import { contentService, type ActiveProfile } from "../services/contentService"
 import { COUNTRY_OPTIONS } from "../shared/countryOptions"
 import styles from "./Profile.module.css"
 
+<<<<<<< HEAD
 type AuthMode = "signup" | "login"
+=======
+export type AuthMode = "signup" | "login"
+>>>>>>> 8a33d6a (UI Changes)
 
 const normalize = (value?: string) => (value || "").toLowerCase()
 
@@ -167,7 +171,11 @@ type AuthOverlayProps = {
   onComplete: () => void
 }
 
+<<<<<<< HEAD
 function AuthOverlay({ mode, activeProfile, onClose, onSwitchMode, onComplete }: AuthOverlayProps) {
+=======
+export function AuthOverlay({ mode, activeProfile, onClose, onSwitchMode, onComplete }: AuthOverlayProps) {
+>>>>>>> 8a33d6a (UI Changes)
   return (
     <div className={styles.authBackdrop}>
       <div className={styles.authPanel} role="dialog" aria-modal="true">
@@ -587,4 +595,7 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
     </form>
   )
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8a33d6a (UI Changes)

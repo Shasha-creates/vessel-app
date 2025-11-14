@@ -10,7 +10,11 @@ type Props = {
 }
 
 const normalizeProfileTarget = (video: Video): string => {
+<<<<<<< HEAD
   const candidate = (video.user.id || "").trim()
+=======
+  const candidate = (video.user.handle || video.user.id || "").trim()
+>>>>>>> 8a33d6a (UI Changes)
   if (candidate) return candidate
   const fallback = video.user.name
     .trim()
@@ -20,7 +24,11 @@ const normalizeProfileTarget = (video: Video): string => {
   return fallback || "creator"
 }
 
+<<<<<<< HEAD
 const resolveUserId = (clip: Video): string => clip.user.id || normalizeProfileTarget(clip)
+=======
+const resolveUserId = (clip: Video): string => clip.user.handle || clip.user.id || normalizeProfileTarget(clip)
+>>>>>>> 8a33d6a (UI Changes)
 
 export default function ForYou({ filter }: Props) {
   const [clips, setClips] = React.useState<Video[]>([])
@@ -126,6 +134,18 @@ export default function ForYou({ filter }: Props) {
     []
   )
 
+<<<<<<< HEAD
+=======
+  const handleBookmark = React.useCallback((clipId: string) => {
+    try {
+      contentService.toggleBookmark(clipId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign in to save videos for later.'
+      window.alert(message)
+    }
+  }, [])
+
+>>>>>>> 8a33d6a (UI Changes)
   const openProfile = React.useCallback(
     (clip: Video) => {
       const target = normalizeProfileTarget(clip)
@@ -165,7 +185,11 @@ export default function ForYou({ filter }: Props) {
                   video={clip}
                   onLike={() => contentService.recordLike(clip.id)}
                   onComment={() => setCommentClip(clip)}
+<<<<<<< HEAD
                   onBookmark={() => contentService.toggleBookmark(clip.id)}
+=======
+                  onBookmark={() => handleBookmark(clip.id)}
+>>>>>>> 8a33d6a (UI Changes)
                   onShare={() => {
                     contentService.recordShare(clip.id)
                     const shareUrl =

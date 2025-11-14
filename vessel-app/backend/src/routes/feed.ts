@@ -10,7 +10,11 @@ import {
   listVideosByAuthors,
   type FeedVideoRecord,
 } from '../services/videoFeedService'
+<<<<<<< HEAD
 import { presentUser } from '../services/userService'
+=======
+import { findUserByHandle, findUserById, presentUser } from '../services/userService'
+>>>>>>> 8a33d6a (UI Changes)
 import { listFollowing } from '../services/followService'
 
 const router = Router()
@@ -60,12 +64,21 @@ router.get('/for-you', async (req, res, next) => {
 router.get('/following', requireAuth, async (req, res, next) => {
   try {
     const { limit, cursor } = parsePaginationQuery(req.query)
+<<<<<<< HEAD
     const followees = await listFollowing(req.authUser!.id)
     if (!followees.length) {
       return res.json({ videos: [] })
     }
     const videos = await listVideosByAuthors(
       followees.map((user) => user.id),
+=======
+    const follower = await listFollowing(req.authUser!.id)
+    if (!follower.length) {
+      return res.json({ videos: [] })
+    }
+    const videos = await listVideosByAuthors(
+      follower.map((user) => user.id),
+>>>>>>> 8a33d6a (UI Changes)
       { limit, cursor }
     )
     res.json({ videos: videos.map(presentFeedVideo) })
@@ -74,6 +87,37 @@ router.get('/following', requireAuth, async (req, res, next) => {
   }
 })
 
+<<<<<<< HEAD
+=======
+router.get('/mine', requireAuth, async (req, res, next) => {
+  try {
+    const { limit, cursor } = parsePaginationQuery(req.query)
+    const videos = await listVideosByAuthors([req.authUser!.id], { limit, cursor })
+    res.json({ videos: videos.map(presentFeedVideo) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/profiles/:profileId', async (req, res, next) => {
+  try {
+    const identifier = (req.params.profileId || '').trim()
+    if (!identifier) {
+      return res.status(400).json({ message: 'profileId is required' })
+    }
+    const authorId = await resolveAuthorId(identifier)
+    if (!authorId) {
+      return res.status(404).json({ message: 'Creator not found.' })
+    }
+    const { limit, cursor } = parsePaginationQuery(req.query)
+    const videos = await listVideosByAuthors([authorId], { limit, cursor })
+    res.json({ videos: videos.map(presentFeedVideo) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+>>>>>>> 8a33d6a (UI Changes)
 router.post('/videos', requireAuth, upload.single('file'), async (req, res, next) => {
   try {
     const payload = uploadSchema.parse(req.body)
@@ -143,6 +187,28 @@ function buildPublicUrl(req: Request, relativePath: string) {
   return `${origin}${relativePath.startsWith('/') ? relativePath : `/${relativePath}`}`
 }
 
+<<<<<<< HEAD
+=======
+async function resolveAuthorId(identifier: string): Promise<string | null> {
+  const trimmed = identifier.trim()
+  if (!trimmed) {
+    return null
+  }
+  const normalizedHandle = trimmed.replace(/^@/, '').toLowerCase()
+  const byHandle = await findUserByHandle(normalizedHandle)
+  if (byHandle) {
+    return byHandle.id
+  }
+  if (/^[0-9a-f-]{8}-[0-9a-f-]{4}-[1-5][0-9a-f-]{3}-[89ab][0-9a-f-]{3}-[0-9a-f-]{12}$/i.test(trimmed)) {
+    const byId = await findUserById(trimmed)
+    if (byId) {
+      return byId.id
+    }
+  }
+  return null
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function presentFeedVideo(row: FeedVideoRecord) {
   return {
     id: row.id,

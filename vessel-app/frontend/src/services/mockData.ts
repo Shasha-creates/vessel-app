@@ -49,6 +49,11 @@ export type User = {
   avatar?: string
   churchHome?: string
   ministryRole?: string
+<<<<<<< HEAD
+=======
+  handle?: string
+  accountId?: string
+>>>>>>> 8a33d6a (UI Changes)
 }
 
 export type ScriptureReference = {

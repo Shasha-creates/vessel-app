@@ -36,7 +36,14 @@ export default function VideoCard({
   const likes = video.likesDisplay ?? formatLikes(video.likes)
   const scripture = video.scripture
   const tags = video.tags.slice(0, 3)
+<<<<<<< HEAD
   const handle = video.user.id ? `@${video.user.id.replace(/\s+/g, "").toLowerCase()}` : `@${slugify(video.user.name)}`
+=======
+  const baseHandle = video.user.handle || video.user.id || ''
+  const normalizedHandle =
+    baseHandle.replace(/^@/, '').replace(/\s+/g, '').toLowerCase() || slugify(video.user.name)
+  const handle = `@${normalizedHandle}`
+>>>>>>> 8a33d6a (UI Changes)
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
   const [muted, setMuted] = React.useState(false)
   const [expandDescription, setExpandDescription] = React.useState(false)
@@ -240,4 +247,7 @@ function formatCount(value: number) {
   if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}K`
   return `${value}`
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 8a33d6a (UI Changes)
