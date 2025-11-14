@@ -20,7 +20,10 @@ const ACTIVE_USER_EMAIL_KEY = 'vessel_user_email'
 const ACTIVE_USER_VERIFIED_KEY = 'vessel_user_verified'
 const AUTH_TOKEN_KEY = 'vessel_auth_token'
 const UPLOAD_STORAGE_KEY = 'vessel_user_uploads_v1'
+<<<<<<< HEAD
 const FOLLOWING_STORAGE_KEY = 'vessel_following_ids_v1'
+=======
+>>>>>>> 8a33d6a (UI Changes)
 const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
 const DEFAULT_VIDEO_PLACEHOLDER = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 const DEFAULT_THUMB_PLACEHOLDER = 'https://placehold.co/640x360?text=Vessel'
@@ -30,9 +33,13 @@ const NETWORK_FAILURE_RATE = 0.05
 const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
 const MODERATION_CONTEXT_PROFILE = 'profile'
 const MODERATION_CONTEXT_UPLOAD = 'upload'
+<<<<<<< HEAD
 const DEFAULT_SAVED_IDS = ['psalm23-reflection']
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const GUEST_FOLLOW_DEFAULTS = ['sarah-grace', 'river-city-worship', 'pastor-ana'].map((id) => normalizeId(id))
+=======
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+>>>>>>> 8a33d6a (UI Changes)
 let remoteFeed: Video[] = []
 
 type StoredUpload = Omit<Video, 'videoUrl'>
@@ -84,6 +91,75 @@ type ContactMatch = {
   photoUrl: string | null
 }
 
+<<<<<<< HEAD
+=======
+type SuggestedConnection = {
+  id: string
+  handle: string
+  name: string
+  church?: string | null
+  country?: string | null
+  photoUrl?: string | null
+  summary?: string | null
+  mutualConnections: number
+}
+
+type ApiSuggestedConnection = ApiUser & {
+  mutualConnections?: number
+  summary?: string | null
+}
+
+type ApiThreadMessage = {
+  id: string
+  threadId: string
+  body: string
+  createdAt: string
+  sender: {
+    id: string
+    handle: string
+    name: string
+    church?: string | null
+    country?: string | null
+    photoUrl?: string | null
+  }
+}
+
+type ApiThreadSummary = {
+  id: string
+  subject?: string | null
+  participants: ApiUser[]
+  lastMessage?: ApiThreadMessage | null
+  unreadCount: number
+  updatedAt: string
+}
+
+type ThreadParticipant = {
+  id: string
+  handle: string
+  name: string
+  church?: string | null
+  country?: string | null
+  photoUrl?: string | null
+}
+
+type ThreadMessage = {
+  id: string
+  threadId: string
+  body: string
+  createdAt: string
+  sender: ThreadParticipant
+}
+
+type MessageThread = {
+  id: string
+  subject?: string | null
+  participants: ThreadParticipant[]
+  lastMessage?: ThreadMessage | null
+  unreadCount: number
+  updatedAt: string
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 type ApiFeedVideo = {
   id: string
   title: string
@@ -208,6 +284,13 @@ function getStoredAuthToken(): string | null {
   return window.localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
+<<<<<<< HEAD
+=======
+function hasAuthSession(): boolean {
+  return Boolean(getStoredAuthToken())
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function setStoredAuthToken(token: string | null): void {
   if (typeof window === 'undefined') return
   if (token) {
@@ -215,6 +298,11 @@ function setStoredAuthToken(token: string | null): void {
   } else {
     window.localStorage.removeItem(AUTH_TOKEN_KEY)
   }
+<<<<<<< HEAD
+=======
+  bookmarksHydrated = false
+  bookmarkedIds = new Set()
+>>>>>>> 8a33d6a (UI Changes)
 }
 
 function requireApiBaseUrl(): string {
@@ -309,6 +397,13 @@ function normalizeId(value: string): string {
   return value.toLowerCase().replace(/\s+/g, '-')
 }
 
+<<<<<<< HEAD
+=======
+function normalizeHandleMatch(value: string): string {
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function slugifyDisplayName(value: string): string {
   const base = value
     .trim()
@@ -378,11 +473,16 @@ function persistUploads() {
 function ensureFollowingHydrated() {
   if (followedHydrated || typeof window === 'undefined') return
   followedHydrated = true
+<<<<<<< HEAD
   if (getStoredAuthToken()) {
+=======
+  if (hasAuthSession()) {
+>>>>>>> 8a33d6a (UI Changes)
     followedIds = new Set()
     void refreshFollowingFromServer(true)
     return
   }
+<<<<<<< HEAD
   const raw = window.localStorage.getItem(FOLLOWING_STORAGE_KEY)
   if (raw) {
     try {
@@ -404,6 +504,13 @@ function persistFollowing() {
 
 function refreshFollowingFromServer(force = false): Promise<void> | undefined {
   if (!getStoredAuthToken()) {
+=======
+  followedIds = new Set()
+}
+
+function refreshFollowingFromServer(force = false): Promise<void> | undefined {
+  if (!hasAuthSession()) {
+>>>>>>> 8a33d6a (UI Changes)
     return undefined
   }
   if (followingFetchPromise && !force) {
@@ -432,6 +539,13 @@ function getFollowedIds(): Set<string> {
 function ensureBookmarksHydrated() {
   if (bookmarksHydrated || typeof window === 'undefined') return
   bookmarksHydrated = true
+<<<<<<< HEAD
+=======
+  if (!hasAuthSession()) {
+    bookmarkedIds = new Set()
+    return
+  }
+>>>>>>> 8a33d6a (UI Changes)
   const raw = window.localStorage.getItem(BOOKMARK_STORAGE_KEY)
   if (raw) {
     try {
@@ -444,6 +558,7 @@ function ensureBookmarksHydrated() {
       bookmarkedIds = new Set()
     }
   }
+<<<<<<< HEAD
   if (!bookmarkedIds.size) {
     bookmarkedIds = new Set(DEFAULT_SAVED_IDS)
     window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify([...bookmarkedIds]))
@@ -453,10 +568,23 @@ function ensureBookmarksHydrated() {
 
 function persistBookmarks() {
   if (typeof window === 'undefined') return
+=======
+  bookmarkedIds = new Set()
+}
+
+function persistBookmarks() {
+  if (typeof window === 'undefined' || !hasAuthSession()) return
+>>>>>>> 8a33d6a (UI Changes)
   window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify([...bookmarkedIds]))
 }
 
 function getSavedIds(): Set<string> {
+<<<<<<< HEAD
+=======
+  if (!hasAuthSession()) {
+    return new Set()
+  }
+>>>>>>> 8a33d6a (UI Changes)
   ensureBookmarksHydrated()
   return bookmarkedIds
 }
@@ -547,7 +675,10 @@ function signOutToGuest(): ActiveProfile {
     window.localStorage.removeItem(ACTIVE_USER_EMAIL_KEY)
     window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
     window.localStorage.removeItem(AUTH_TOKEN_KEY)
+<<<<<<< HEAD
     window.localStorage.removeItem(FOLLOWING_STORAGE_KEY)
+=======
+>>>>>>> 8a33d6a (UI Changes)
   }
   followedIds = new Set()
   followedHydrated = false
@@ -711,6 +842,98 @@ async function matchContactsByEmail(emails: string[]): Promise<ContactMatch[]> {
   return payload.matches
 }
 
+<<<<<<< HEAD
+=======
+async function fetchConnectionSuggestions(limit = 4): Promise<SuggestedConnection[]> {
+  if (API_BASE_URL && getStoredAuthToken()) {
+    try {
+      const payload = await getJson<{ suggestions: ApiSuggestedConnection[] }>(
+        `/api/connections/suggested?limit=${limit}`,
+        true
+      )
+      if (payload.suggestions?.length) {
+        return payload.suggestions.map(mapApiSuggestedConnection)
+      }
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn('Unable to fetch suggested connections from API, using local fallback.', error)
+    }
+  }
+  return simulateNetwork(() => buildLocalSuggestions(limit))
+}
+
+function mapApiSuggestedConnection(user: ApiSuggestedConnection): SuggestedConnection {
+  const summary =
+    user.summary ??
+    (user.church && user.country
+      ? `${user.church} • ${user.country}`
+      : user.church ?? user.country ?? 'Active on Vessel')
+  return {
+    id: user.id,
+    handle: user.handle || user.id,
+    name: user.name,
+    church: user.church,
+    country: user.country,
+    photoUrl: user.photoUrl,
+    summary,
+    mutualConnections: Math.max(1, user.mutualConnections ?? 1),
+  }
+}
+
+function buildLocalSuggestions(limit: number): SuggestedConnection[] {
+  const activeProfile = getActiveProfile()
+  const activeId = normalizeId(activeProfile.id || '')
+  const following = getFollowedIds()
+  const seen = new Set<string>()
+  const suggestions: SuggestedConnection[] = []
+
+  for (const clip of seedVideos) {
+    const creator = clip.user
+    const handleSource =
+      creator.handle || creator.accountId || creator.id || (creator.name ? slugifyDisplayName(creator.name) : '')
+    if (!handleSource) {
+      continue
+    }
+    const normalized = normalizeId(handleSource)
+    if (!normalized || normalized === activeId || following.has(normalized) || seen.has(normalized)) {
+      continue
+    }
+    seen.add(normalized)
+    suggestions.push({
+      id: creator.id || normalized,
+      handle: handleSource,
+      name: creator.name || 'Vessel Creator',
+      church: creator.churchHome ?? null,
+      country: null,
+      photoUrl: creator.avatar ?? null,
+      summary:
+        creator.ministryRole && creator.churchHome
+          ? `${creator.ministryRole} • ${creator.churchHome}`
+          : creator.ministryRole || creator.churchHome || 'Active on Vessel',
+      mutualConnections: Math.max(1, Math.floor(Math.random() * 3) + 1),
+    })
+    if (suggestions.length >= limit) {
+      break
+    }
+  }
+
+  if (!suggestions.length) {
+    suggestions.push({
+      id: 'saintmichaels',
+      handle: 'saintmichaels',
+      name: 'Saint Michaels',
+      church: 'Saint Michaels Cathedral',
+      country: null,
+      photoUrl: null,
+      summary: 'Community leader',
+      mutualConnections: 2,
+    })
+  }
+
+  return suggestions
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 async function hashEmailForMatch(value: string): Promise<string> {
   const normalized = value.trim().toLowerCase()
   if (!normalized) {
@@ -727,6 +950,60 @@ async function hashEmailForMatch(value: string): Promise<string> {
   return hashPassword(normalized, normalized)
 }
 
+<<<<<<< HEAD
+=======
+async function fetchMessageThreads(): Promise<MessageThread[]> {
+  const payload = await getJson<{ threads: ApiThreadSummary[] }>('/api/messages/threads', true)
+  return payload.threads.map(mapApiThread)
+}
+
+async function fetchThreadMessages(threadId: string): Promise<ThreadMessage[]> {
+  if (!threadId) {
+    return []
+  }
+  const payload = await getJson<{ messages: ApiThreadMessage[] }>(
+    `/api/messages/threads/${encodeURIComponent(threadId)}/messages`,
+    true
+  )
+  return payload.messages.map(mapApiThreadMessage)
+}
+
+async function sendThreadMessage(threadId: string, body: string): Promise<ThreadMessage> {
+  if (!threadId) {
+    throw new Error('Choose a conversation before sending.')
+  }
+  const payload = await postJson<{ message: ApiThreadMessage }>(
+    `/api/messages/threads/${encodeURIComponent(threadId)}/messages`,
+    { body },
+    true
+  )
+  return mapApiThreadMessage(payload.message)
+}
+
+async function startConversationWithHandles(handles: string[], message: string, subject?: string) {
+  const normalized = Array.from(
+    new Set(
+      handles
+        .map((handle) => normalizeHandleForApi(handle))
+        .filter((handle) => handle.length > 0)
+    )
+  )
+  if (!normalized.length) {
+    throw new Error('Enter at least one handle to start a conversation.')
+  }
+  const payload = await postJson<{ thread: ApiThreadSummary }>(
+    '/api/messages/threads',
+    { handles: normalized, message, subject },
+    true
+  )
+  return mapApiThread(payload.thread)
+}
+
+function normalizeHandleForApi(value: string): string {
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function mapApiVideo(video: ApiFeedVideo): Video {
   const likeCount = video.stats?.likes ?? 0
   return {
@@ -734,8 +1011,15 @@ function mapApiVideo(video: ApiFeedVideo): Video {
     title: video.title,
     description: video.description ?? '',
     user: {
+<<<<<<< HEAD
       id: video.user.id,
       name: video.user.name || video.user.handle,
+=======
+      id: video.user.handle || video.user.id,
+      handle: video.user.handle ?? undefined,
+      accountId: video.user.id,
+      name: video.user.name || video.user.handle || video.user.id,
+>>>>>>> 8a33d6a (UI Changes)
       churchHome: video.user.church ?? undefined,
       avatar: video.user.photoUrl ?? undefined,
     },
@@ -754,6 +1038,44 @@ function mapApiVideo(video: ApiFeedVideo): Video {
   }
 }
 
+<<<<<<< HEAD
+=======
+function mapApiThreadMessage(message: ApiThreadMessage): ThreadMessage {
+  return {
+    id: message.id,
+    threadId: message.threadId,
+    body: message.body,
+    createdAt: message.createdAt,
+    sender: {
+      id: message.sender.id,
+      handle: message.sender.handle,
+      name: message.sender.name,
+      church: message.sender.church ?? undefined,
+      country: message.sender.country ?? undefined,
+      photoUrl: message.sender.photoUrl ?? undefined,
+    },
+  }
+}
+
+function mapApiThread(thread: ApiThreadSummary): MessageThread {
+  return {
+    id: thread.id,
+    subject: thread.subject ?? undefined,
+    participants: thread.participants.map((participant) => ({
+      id: participant.id,
+      handle: participant.handle,
+      name: participant.name,
+      church: participant.church ?? undefined,
+      country: participant.country ?? undefined,
+      photoUrl: participant.photoUrl ?? undefined,
+    })),
+    lastMessage: thread.lastMessage ? mapApiThreadMessage(thread.lastMessage) : null,
+    unreadCount: thread.unreadCount ?? 0,
+    updatedAt: thread.updatedAt,
+  }
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function ensureLibraryHydrated() {
   ensureUploadsHydrated()
 }
@@ -767,6 +1089,34 @@ function notify() {
   listeners.forEach((listener) => listener())
 }
 
+<<<<<<< HEAD
+=======
+function sortByPublishedAt(videos: Video[]): Video[] {
+  return videos
+    .slice()
+    .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
+}
+
+function replaceRemoteFeed(videos: Video[], options: { silent?: boolean } = {}) {
+  remoteFeed = sortByPublishedAt(videos)
+  if (!options.silent) {
+    notify()
+  }
+}
+
+function mergeRemoteFeed(videos: Video[], options: { silent?: boolean } = {}) {
+  if (!videos.length) {
+    return
+  }
+  const merged = new Map(remoteFeed.map((video) => [video.id, video]))
+  videos.forEach((video) => merged.set(video.id, video))
+  remoteFeed = sortByPublishedAt(Array.from(merged.values()))
+  if (!options.silent) {
+    notify()
+  }
+}
+
+>>>>>>> 8a33d6a (UI Changes)
 function persistIfUpload(clipId: string) {
   if (uploads.find((item) => item.id === clipId)) {
     persistUploads()
@@ -793,10 +1143,27 @@ function sortForFeed(clips: Video[]): Video[] {
 
 export const contentService = {
   matchContactsByEmail,
+<<<<<<< HEAD
+=======
+  fetchConnectionSuggestions,
+  fetchMessageThreads,
+  fetchThreadMessages,
+  sendThreadMessage,
+  startConversation(handles: string | string[], message: string, subject?: string) {
+    const list = Array.isArray(handles) ? handles : [handles]
+    return startConversationWithHandles(list, message, subject)
+  },
+>>>>>>> 8a33d6a (UI Changes)
   subscribe(listener: Listener) {
     listeners.add(listener)
     return () => listeners.delete(listener)
   },
+<<<<<<< HEAD
+=======
+  isAuthenticated() {
+    return hasAuthSession()
+  },
+>>>>>>> 8a33d6a (UI Changes)
   getActiveProfile,
   updateActiveProfile,
   completeSignup,
@@ -819,6 +1186,7 @@ export const contentService = {
     if (!normalized) {
       return false
     }
+<<<<<<< HEAD
     if (getStoredAuthToken()) {
       await postJson(`/api/follows/${encodeURIComponent(normalized)}`, {}, true)
       followedIds.add(normalized)
@@ -834,12 +1202,23 @@ export const contentService = {
       }
       return true
     })
+=======
+    if (!hasAuthSession()) {
+      throw new Error('Sign in to follow creators on Vessel.')
+    }
+    await postJson(`/api/follows/${encodeURIComponent(normalized)}`, {}, true)
+    ensureFollowingHydrated()
+    followedIds.add(normalized)
+    notify()
+    return true
+>>>>>>> 8a33d6a (UI Changes)
   },
   async unfollowUser(userId: string) {
     const normalized = normalizeId(userId.replace(/^@/, ''))
     if (!normalized) {
       return false
     }
+<<<<<<< HEAD
     if (getStoredAuthToken()) {
       await deleteJson(`/api/follows/${encodeURIComponent(normalized)}`, true)
       if (followedIds.has(normalized)) {
@@ -859,6 +1238,23 @@ export const contentService = {
     })
   },
   isFollowing(userId: string) {
+=======
+    if (!hasAuthSession()) {
+      throw new Error('Sign in to manage who you follow.')
+    }
+    await deleteJson(`/api/follows/${encodeURIComponent(normalized)}`, true)
+    ensureFollowingHydrated()
+    if (followedIds.has(normalized)) {
+      followedIds.delete(normalized)
+      notify()
+    }
+    return false
+  },
+  isFollowing(userId: string) {
+    if (!hasAuthSession()) {
+      return false
+    }
+>>>>>>> 8a33d6a (UI Changes)
     ensureFollowingHydrated()
     return followedIds.has(normalizeId(userId))
   },
@@ -870,9 +1266,21 @@ export const contentService = {
     return this.followUser(userId).then(() => true)
   },
   listFollowingIds(): string[] {
+<<<<<<< HEAD
     return [...getFollowedIds()]
   },
   isBookmarked(clipId: string) {
+=======
+    if (!hasAuthSession()) {
+      return []
+    }
+    return [...getFollowedIds()]
+  },
+  isBookmarked(clipId: string) {
+    if (!hasAuthSession()) {
+      return false
+    }
+>>>>>>> 8a33d6a (UI Changes)
     ensureBookmarksHydrated()
     return bookmarkedIds.has(clipId)
   },
@@ -880,11 +1288,23 @@ export const contentService = {
     return [...getSavedIds()]
   },
   getSavedClips(): Video[] {
+<<<<<<< HEAD
+=======
+    if (!hasAuthSession()) {
+      return []
+    }
+>>>>>>> 8a33d6a (UI Changes)
     const savedIds = getSavedIds()
     if (!savedIds.size) return []
     return getLibrary().filter((clip) => savedIds.has(clip.id))
   },
   toggleBookmark(clipId: string) {
+<<<<<<< HEAD
+=======
+    if (!hasAuthSession()) {
+      throw new Error('Sign in to save videos for later.')
+    }
+>>>>>>> 8a33d6a (UI Changes)
     ensureBookmarksHydrated()
     const clip = getLibrary().find((item) => item.id === clipId)
     if (bookmarkedIds.has(clipId)) {
@@ -908,14 +1328,22 @@ export const contentService = {
   async fetchForYouFeed(): Promise<Video[]> {
     const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/for-you')
     const mapped = payload.videos.map(mapApiVideo)
+<<<<<<< HEAD
     remoteFeed = mapped
+=======
+    replaceRemoteFeed(mapped, { silent: true })
+>>>>>>> 8a33d6a (UI Changes)
     return mapped
   },
   async fetchFollowingFeed(): Promise<Video[]> {
     try {
       const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/following', true)
       const mapped = payload.videos.map(mapApiVideo)
+<<<<<<< HEAD
       remoteFeed = mapped
+=======
+      replaceRemoteFeed(mapped, { silent: true })
+>>>>>>> 8a33d6a (UI Changes)
       return mapped
     } catch (error) {
       if ((error as any)?.status === 401) {
@@ -924,6 +1352,25 @@ export const contentService = {
       throw error
     }
   },
+<<<<<<< HEAD
+=======
+  async fetchMyUploads(): Promise<Video[]> {
+    const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/mine', true)
+    const mapped = payload.videos.map(mapApiVideo)
+    mergeRemoteFeed(mapped, { silent: true })
+    return mapped
+  },
+  async fetchCreatorUploads(profileId: string): Promise<Video[]> {
+    const normalized = normalizeHandleMatch(profileId)
+    if (!normalized) {
+      return []
+    }
+    const payload = await getJson<{ videos: ApiFeedVideo[] }>(`/api/feed/profiles/${encodeURIComponent(normalized)}`)
+    const mapped = payload.videos.map(mapApiVideo)
+    mergeRemoteFeed(mapped, { silent: true })
+    return mapped
+  },
+>>>>>>> 8a33d6a (UI Changes)
   async fetchCollectionFeed(collection: ContentCollection): Promise<Video[]> {
     const curated = filterFaithCentric(getLibrary().filter((clip) => clip.collection === collection))
     return sortForFeed(curated)
@@ -978,8 +1425,12 @@ export const contentService = {
       true
     )
     const clip = mapApiVideo(payload.video)
+<<<<<<< HEAD
     remoteFeed = [clip, ...remoteFeed.filter((video) => video.id !== clip.id)]
     notify()
+=======
+    mergeRemoteFeed([clip])
+>>>>>>> 8a33d6a (UI Changes)
     return clip
   },
   async recordLike(clipId: string) {
@@ -1028,11 +1479,31 @@ export const contentService = {
     notify()
   },
   getClipsByAuthor(authorId: string): Video[] {
+<<<<<<< HEAD
     const normalizedTarget = normalizeId(authorId.startsWith('@') ? authorId.slice(1) : authorId)
     return getLibrary().filter((clip) => {
       const clipId = normalizeId(clip.user.id || '')
       const normalizedName = normalizeId(clip.user.name)
       return clipId === normalizedTarget || normalizedName === normalizedTarget
+=======
+    const trimmed = authorId.trim()
+    const withoutAt = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed
+    const targetHandle = normalizeHandleMatch(withoutAt)
+    const slugTarget = normalizeId(withoutAt)
+    return getLibrary().filter((clip) => {
+      const clipHandle = clip.user.handle ? normalizeHandleMatch(clip.user.handle) : ''
+      const clipId = clip.user.id ? normalizeHandleMatch(clip.user.id) : ''
+      const clipAccountId = clip.user.accountId ? normalizeHandleMatch(clip.user.accountId) : ''
+      const normalizedName = normalizeId(clip.user.name)
+      const handleMatches =
+        (targetHandle && clipHandle === targetHandle) ||
+        (targetHandle && clipId === targetHandle) ||
+        (targetHandle && clipAccountId === targetHandle)
+      if (handleMatches) {
+        return true
+      }
+      return clipId === slugTarget || clipAccountId === slugTarget || normalizedName === slugTarget
+>>>>>>> 8a33d6a (UI Changes)
     })
   },
   getLikedFeedFor(userId: string): Video[] {
@@ -1046,4 +1517,17 @@ export const contentService = {
   },
 }
 
+<<<<<<< HEAD
 export type { Video, ContentCategory, ContentCollection, ActiveProfile }
+=======
+export type {
+  Video,
+  ContentCategory,
+  ContentCollection,
+  ActiveProfile,
+  ContactMatch,
+  SuggestedConnection,
+  MessageThread,
+  ThreadMessage,
+}
+>>>>>>> 8a33d6a (UI Changes)
