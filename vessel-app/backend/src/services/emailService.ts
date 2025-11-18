@@ -65,8 +65,8 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
 export function buildVerificationEmail(recipient: string, verificationCode: string) {
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 24px;">
-      <h2>Confirm your Vessel account</h2>
-      <p>Thanks for joining Vessel! Enter the verification code below to finish creating your account.</p>
+      <h2>Confirm your Godlyme account</h2>
+      <p>Thanks for joining Godlyme! Enter the verification code below to finish creating your account.</p>
       <p style="margin: 32px 0; font-size: 32px; letter-spacing: 8px; font-weight: bold;">
         ${verificationCode}
       </p>
@@ -76,9 +76,9 @@ export function buildVerificationEmail(recipient: string, verificationCode: stri
 
   return {
     to: recipient,
-    subject: 'Verify your Vessel email',
+    subject: 'Verify your Godlyme email',
     html,
-    text: `Your Vessel verification code is ${verificationCode}.`,
+    text: `Your Godlyme verification code is ${verificationCode}.`,
   }
 }
 
@@ -86,7 +86,7 @@ export function buildPasswordResetEmail(recipient: string, token: string) {
   const resetUrl = `${getAppBaseUrl().replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}`
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 24px;">
-      <h2>Reset your Vessel password</h2>
+      <h2>Reset your Godlyme password</h2>
       <p>We received a request to reset the password for your account. Click the button below or paste the link into your browser.</p>
       <p style="margin: 24px 0;">
         <a href="${resetUrl}" style="background:#1d4ed8;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">Create a new password</a>
@@ -98,8 +98,8 @@ export function buildPasswordResetEmail(recipient: string, token: string) {
 
   return {
     to: recipient,
-    subject: 'Reset your Vessel password',
+    subject: 'Reset your Godlyme password',
     html,
-    text: `Reset your Vessel password by visiting: ${resetUrl}`,
+    text: `Reset your Godlyme password by visiting: ${resetUrl}`,
   }
 }
