@@ -1,14 +1,22 @@
 import React from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { contentService, type Video, type ActiveProfile } from "../services/contentService"
+import { contentService, type Video, type ActiveProfile, type ApiUser } from "../services/contentService"
 import { formatLikes } from "../services/mockData"
 import styles from "./Profile.module.css"
 
 type TabKey = "videos" | "liked" | "saved"
 
+type OverlayEntry = {
+  id: string
+  label: string
+  route: string
+  subtitle?: string | null
+}
+
 type OverlayProps = {
   title: string
-  handles: string[]
+  entries: OverlayEntry[]
+  onSelect: (route: string) => void
   onClose: () => void
 }
 
@@ -30,10 +38,14 @@ export default function Profile() {
   const [showFollowingList, setShowFollowingList] = React.useState(false)
   const [showFollowersList, setShowFollowersList] = React.useState(false)
   const [followBusy, setFollowBusy] = React.useState(false)
+  const [viewerFollowers, setViewerFollowers] = React.useState<ApiUser[]>([])
+  const [viewerFollowing, setViewerFollowing] = React.useState<ApiUser[]>([])
+  const [followVersion, setFollowVersion] = React.useState(0)
 
   React.useEffect(() => {
     const unsubscribe = contentService.subscribe(() => {
       setActiveProfile(contentService.getActiveProfile())
+      setFollowVersion((value) => value + 1)
     })
     return unsubscribe
   }, [])
@@ -118,6 +130,41 @@ export default function Profile() {
       setShowFollowingList(false)
     }
   }, [isGuest])
+  React.useEffect(() => {
+    let cancelled = false
+
+    async function loadFollowData() {
+      if (!isAuthenticated) {
+        if (!cancelled) {
+          setViewerFollowers([])
+          setViewerFollowing([])
+        }
+        return
+      }
+      try {
+        const [followingList, followerList] = await Promise.all([
+          contentService.fetchFollowingProfiles(),
+          contentService.fetchFollowerProfiles(),
+        ])
+        if (!cancelled) {
+          setViewerFollowing(followingList)
+          setViewerFollowers(followerList)
+        }
+      } catch (error) {
+        console.error('Failed to load follow lists', error)
+        if (!cancelled) {
+          setViewerFollowing([])
+          setViewerFollowers([])
+        }
+      }
+    }
+
+    void loadFollowData()
+
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, followVersion])
 
   if (!targetId) {
     return <div className={styles.placeholder}>Creator not found.</div>
@@ -125,36 +172,66 @@ export default function Profile() {
 
   const totalLikes = clips.reduce((acc, clip) => acc + clip.likes, 0)
   const savedCount = savedClips.length
-  const followerEstimate = isSelf && !isAuthenticated ? 0 : Math.max(120, likedClips.length ? likedClips.length * 120 : totalLikes / 18)
-  const baseFollowing = contentService.listFollowingIds()
   const church = isSelf ? activeProfile.church : heroClip?.user.churchHome || ""
   const avatarPhoto = isSelf ? activeProfile.photo : undefined
   const avatarLetter = displayName.slice(0, 1).toUpperCase()
+  const selfFollowers = isSelf ? viewerFollowers : []
+  const selfFollowing = isSelf ? viewerFollowing : []
+  const targetHandle = heroClip?.user.handle || (targetId.startsWith('@') ? targetId.slice(1) : '')
+  const normalizedTargetHandle = targetHandle ? normalize(targetHandle) : ''
+  const targetFollowsViewer = Boolean(
+    normalizedTargetHandle &&
+      viewerFollowers.some((user) => user.handle && normalize(user.handle) === normalizedTargetHandle)
+  )
+  const canMessageTarget = Boolean(!isSelf && isAuthenticated && targetHandle && isFollowing && targetFollowsViewer)
 
   const ensureHandle = React.useCallback((value: string) => (value.startsWith("@") ? value : `@${value}`), [])
 
-  const followingHandles = React.useMemo(() => {
-    if (isGuest) return []
-    if (baseFollowing.length) return baseFollowing.map(ensureHandle)
-    return Array.from({ length: 6 }, (_, i) => ensureHandle(`friend_${i + 1}`))
-  }, [baseFollowing, ensureHandle, isGuest])
+  const followingEntries = React.useMemo<OverlayEntry[]>(() => {
+    if (isGuest || !isSelf) return []
+    return selfFollowing
+      .map((user) => {
+        const handle = user.handle?.trim()
+        if (!handle) {
+          return null
+        }
+        return {
+          id: user.id,
+          label: ensureHandle(handle),
+          route: `/profile/${handle}`,
+          subtitle: user.name ?? null,
+        }
+      })
+      .filter((entry): entry is OverlayEntry => Boolean(entry))
+  }, [ensureHandle, selfFollowing, isGuest, isSelf])
 
-  const followersHandles = React.useMemo(() => {
-    if (isGuest) return []
-    const count = Math.min(20, Math.max(5, Math.round(followerEstimate / 250) + 5))
-    return Array.from({ length: count }, (_, i) => ensureHandle(`supporter_${i + 1}`))
-  }, [ensureHandle, followerEstimate, isGuest])
+  const followersEntries = React.useMemo<OverlayEntry[]>(() => {
+    if (isGuest || !isSelf) return []
+    return selfFollowers
+      .map((user) => {
+        const handle = user.handle?.trim()
+        if (!handle) {
+          return null
+        }
+        return {
+          id: user.id,
+          label: ensureHandle(handle),
+          route: `/profile/${handle}`,
+          subtitle: user.name ?? null,
+        }
+      })
+      .filter((entry): entry is OverlayEntry => Boolean(entry))
+  }, [ensureHandle, selfFollowers, isGuest, isSelf])
 
   const gridSource = React.useMemo(() => {
-  if (tab === 'videos') return clips
-  if (tab === 'liked') return likedClips
-  return savedClips
-}, [tab, clips, likedClips, savedClips])
+    if (tab === 'videos') return clips
+    if (tab === 'liked') return likedClips
+    return savedClips
+  }, [tab, clips, likedClips, savedClips])
 
-const gridClassName =
-  tab === 'videos' ? `${styles.gridContent} ${styles.gridContentTight}` : styles.gridContent
-const followingCount = isGuest ? 0 : followingHandles.length
-  const followerCount = isGuest ? 0 : Math.round(followerEstimate)
+  const followingCount = isSelf ? followingEntries.length : 0
+  const followerCount = isSelf ? followersEntries.length : 0
+  const canShowFollowLists = isSelf && isAuthenticated
 
   const handleFollowToggle = React.useCallback(async () => {
     if (!followTargetId || followBusy) return
@@ -178,6 +255,17 @@ const followingCount = isGuest ? 0 : followingHandles.length
       setFollowBusy(false)
     }
   }, [followBusy, followTargetId, isFollowing])
+  const handleMessageClick = React.useCallback(() => {
+    if (!targetHandle) {
+      window.alert('This creator has not finished setting up messaging yet.')
+      return
+    }
+    if (!canMessageTarget) {
+      window.alert('Follow each other to start messaging on Godlyme.')
+      return
+    }
+    navigate(`/inbox?compose=${encodeURIComponent(targetHandle)}`)
+  }, [canMessageTarget, navigate, targetHandle])
 
   function copyProfileLink() {
     const shareId = targetId || activeProfile.id
@@ -227,14 +315,14 @@ const followingCount = isGuest ? 0 : followingHandles.length
           <Stat
             label="Following"
             value={followingCount.toLocaleString()}
-            onClick={isGuest ? undefined : () => setShowFollowingList(true)}
-            disabled={isGuest}
+            onClick={canShowFollowLists && followingCount ? () => setShowFollowingList(true) : undefined}
+            disabled={!canShowFollowLists || !followingCount}
           />
           <Stat
             label="Followers"
             value={followerCount.toLocaleString()}
-            onClick={isGuest ? undefined : () => setShowFollowersList(true)}
-            disabled={isGuest}
+            onClick={canShowFollowLists && followerCount ? () => setShowFollowersList(true) : undefined}
+            disabled={!canShowFollowLists || !followerCount}
           />
           <Stat label="Likes" value={formatLikes(totalLikes)} />
           {isSelf ? <Stat label="Saved" value={savedCount.toLocaleString()} /> : null}
@@ -274,7 +362,12 @@ const followingCount = isGuest ? 0 : followingHandles.length
               >
                 {followBusy ? (isFollowing ? 'Unfollowing...' : 'Following...') : isFollowing ? 'Following' : 'Follow'}
               </button>
-              <button className={styles.actionButton} onClick={() => navigate('/inbox')}>
+              <button
+                className={styles.actionButton}
+                onClick={handleMessageClick}
+                disabled={!canMessageTarget}
+                title={canMessageTarget ? 'Send a message' : 'Follow each other to start messaging'}
+              >
                 Message
               </button>
               <button className={styles.actionButton} onClick={copyProfileLink}>
@@ -353,11 +446,27 @@ const followingCount = isGuest ? 0 : followingHandles.length
         </div>
       </section>
 
-      {showFollowingList && !isGuest ? (
-        <Overlay title="Following" handles={followingHandles} onClose={() => setShowFollowingList(false)} />
+      {showFollowingList && canShowFollowLists ? (
+        <Overlay
+          title="Following"
+          entries={followingEntries}
+          onSelect={(route) => {
+            setShowFollowingList(false)
+            navigate(route)
+          }}
+          onClose={() => setShowFollowingList(false)}
+        />
       ) : null}
-      {showFollowersList && !isGuest ? (
-        <Overlay title="Followers" handles={followersHandles} onClose={() => setShowFollowersList(false)} />
+      {showFollowersList && canShowFollowLists ? (
+        <Overlay
+          title="Followers"
+          entries={followersEntries}
+          onSelect={(route) => {
+            setShowFollowersList(false)
+            navigate(route)
+          }}
+          onClose={() => setShowFollowersList(false)}
+        />
       ) : null}
     </div>
   )
@@ -382,7 +491,7 @@ function Stat({
   )
 }
 
-function Overlay({ title, handles, onClose }: OverlayProps) {
+function Overlay({ title, entries, onSelect, onClose }: OverlayProps) {
   return (
     <div className={styles.overlayBackdrop}>
       <div className={styles.overlayPanel}>
@@ -392,17 +501,19 @@ function Overlay({ title, handles, onClose }: OverlayProps) {
             x
           </button>
         </div>
-        <div className={styles.overlayList}>
-          {handles.map((handle) => (
-            <div key={handle} className={styles.overlayItem}>
-              <div className={styles.overlayAvatar}>{handle.slice(1, 2).toUpperCase()}</div>
-              <div>
-                <div className={styles.overlayHandle}>{handle}</div>
-                <div className={styles.overlayMeta}>Follows Jesus & Faith builder</div>
-              </div>
-            </div>
+        <ul className={styles.overlayList}>
+          {entries.map((entry) => (
+            <li key={entry.id}>
+              <button type="button" className={styles.overlayItem} onClick={() => onSelect(entry.route)}>
+                <div className={styles.overlayAvatar}>{entry.label.slice(1, 2).toUpperCase()}</div>
+                <div>
+                  <div className={styles.overlayHandle}>{entry.label}</div>
+                  <div className={styles.overlayMeta}>{entry.subtitle || 'Faith-filled creator'}</div>
+                </div>
+              </button>
+            </li>
           ))}
-        </div>
+        </ul>
       </div>
     </div>
   )

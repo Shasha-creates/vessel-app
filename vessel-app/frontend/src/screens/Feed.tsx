@@ -40,6 +40,26 @@ export default function Feed() {
   const [tab, setTab] = React.useState<TabKey>('forYou')
   const [activeNav, setActiveNav] = React.useState('home')
   const navigate = useNavigate()
+  const handleSearch = React.useCallback(() => {
+    const input = window.prompt(
+      'Search Godlyme for creators, testimonies, prayer topics, or verses.\nTip: start with "@" to jump directly to a creator handle.'
+    )
+    if (!input) {
+      return
+    }
+    const trimmed = input.trim()
+    if (!trimmed) {
+      return
+    }
+    if (trimmed.startsWith('@')) {
+      const handle = trimmed.slice(1).trim()
+      if (handle) {
+        navigate(`/profile/${handle}`)
+      }
+      return
+    }
+    navigate(`/home?q=${encodeURIComponent(trimmed)}`)
+  }, [navigate])
 
   const activeTab = tabs.find((item) => item.id === tab) ?? tabs[3]
 
@@ -64,7 +84,7 @@ export default function Feed() {
               </div>
             </div>
             <div className={styles.statusIcons}>
-              <button type="button" aria-label="Search" onClick={() => navigate('/home')}>
+              <button type="button" aria-label="Search" onClick={handleSearch}>
                 <SearchIcon width={18} height={18} aria-hidden="true" />
               </button>
             </div>

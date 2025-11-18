@@ -1302,6 +1302,20 @@ export const contentService = {
     mergeRemoteFeed(mapped, { silent: true })
     return mapped
   },
+  async fetchFollowerProfiles(): Promise<ApiUser[]> {
+    if (!hasAuthSession()) {
+      return []
+    }
+    const payload = await getJson<{ followers: ApiUser[] }>('/api/follows/followers', true)
+    return payload.followers
+  },
+  async fetchFollowingProfiles(): Promise<ApiUser[]> {
+    if (!hasAuthSession()) {
+      return []
+    }
+    const payload = await getJson<{ following: ApiUser[] }>('/api/follows/following', true)
+    return payload.following
+  },
   async fetchCreatorUploads(profileId: string): Promise<Video[]> {
     const normalized = normalizeHandleMatch(profileId)
     if (!normalized) {
@@ -1463,6 +1477,7 @@ export type {
   ContentCategory,
   ContentCollection,
   ActiveProfile,
+  ApiUser,
   ContactMatch,
   SuggestedConnection,
   MessageThread,
