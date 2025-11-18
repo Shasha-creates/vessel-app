@@ -15,18 +15,20 @@ export async function ensureFollowTable(): Promise<void> {
   `)
 }
 
-export async function createFollow(followerId: string, followeeId: string): Promise<void> {
+export async function createFollow(followerId: string, followeeId: string): Promise<boolean> {
   if (followerId === followeeId) {
     throw new Error('You cannot follow yourself.')
   }
-  await pool.query(
+  const result = await pool.query(
     `
       INSERT INTO user_follows (follower_id, followee_id)
       VALUES ($1, $2)
       ON CONFLICT DO NOTHING
+      RETURNING 1
     `,
     [followerId, followeeId]
   )
+  return (result.rowCount ?? 0) > 0
 }
 
 export async function removeFollow(followerId: string, followeeId: string): Promise<void> {
@@ -92,4 +94,19 @@ export async function isMutualFollow(userId: string, otherUserId: string): Promi
 
 export async function ensureFollowPrereqs(): Promise<void> {
   await ensureFollowTable()
+}
+
+export async function getFollowStats(userId: string): Promise<{ followers: number; following: number }> {
+  const result = await pool.query<{ followers: number; following: number }>(
+    `
+      SELECT
+        (SELECT COUNT(*)::int FROM user_follows WHERE followee_id = $1) AS followers,
+        (SELECT COUNT(*)::int FROM user_follows WHERE follower_id = $1) AS following
+    `,
+    [userId]
+  )
+  return {
+    followers: result.rows[0]?.followers ?? 0,
+    following: result.rows[0]?.following ?? 0,
+  }
 }

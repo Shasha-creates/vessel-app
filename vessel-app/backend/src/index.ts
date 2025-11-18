@@ -15,6 +15,8 @@ import { ensureFollowPrereqs } from './services/followService'
 import { ensureVideoEngagementTables } from './services/videoEngagementService'
 import { ensureVideoFeedTables } from './services/videoFeedService'
 import { ensureMessagingTables } from './services/messagingService'
+import notificationsRouter from './routes/notifications'
+import { ensureNotificationTables } from './services/notificationService'
 
 const app = express()
 app.use(cors())
@@ -65,6 +67,7 @@ app.use('/api/follows', followRouter)
 app.use('/api/feed', feedRouter)
 app.use('/api/videos', videoEngagementRouter)
 app.use('/api/messages', messagesRouter)
+app.use('/api/notifications', notificationsRouter)
 
 async function start() {
   let port: number
@@ -77,6 +80,7 @@ async function start() {
     await ensureVideoEngagementTables()
     await ensureVideoFeedTables()
     await ensureMessagingTables()
+    await ensureNotificationTables()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to connect to external services'
     // eslint-disable-next-line no-console

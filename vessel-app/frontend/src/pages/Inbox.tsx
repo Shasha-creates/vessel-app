@@ -1,29 +1,20 @@
 import React from 'react'
 import styles from './Inbox.module.css'
 import { AuthOverlay, type AuthMode } from './Settings'
-import { contentService, type MessageThread, type ThreadMessage, type SuggestedConnection } from '../services/contentService'
+import {
+  contentService,
+  type MessageThread,
+  type ThreadMessage,
+  type SuggestedConnection,
+  type NotificationSummary,
+} from '../services/contentService'
 import { formatRelativeTime } from '../utils/time'
-
-type NotificationItem = {
-  id: string
-  type: 'follow' | 'like' | 'comment' | 'donation'
-  actor: string
-  message: string
-  timeAgo: string
-}
 
 type TabKey = 'notifications' | 'messages' | 'suggested'
 
 type SuggestedCard = SuggestedConnection & {
   isFollowing: boolean
 }
-
-const notifications: NotificationItem[] = [
-  { id: 'n1', type: 'like', actor: '@risinghope', message: 'loved Sunrise Worship Session', timeAgo: '2m' },
-  { id: 'n2', type: 'comment', actor: '@prayercircle', message: 'left a prayer on Psalm 23 reflection', timeAgo: '15m' },
-  { id: 'n3', type: 'donation', actor: '@melodyfaith', message: 'sent a $5 donation', timeAgo: '1h' },
-  { id: 'n4', type: 'follow', actor: '@revivalkids', message: 'started following you', timeAgo: '2h' },
-]
 
 const quickReplyOptions = ['Thanks so much!', "Let's schedule something.", 'Appreciate you sharing this.', 'Praying with you!']
 
@@ -46,6 +37,10 @@ export default function Inbox() {
   const [followBusyId, setFollowBusyId] = React.useState<string | null>(null)
   const [authMode, setAuthMode] = React.useState<AuthMode | null>(null)
   const [threadsRefreshKey, setThreadsRefreshKey] = React.useState(0)
+  const [notifications, setNotifications] = React.useState<NotificationSummary[]>([])
+  const [notificationsLoading, setNotificationsLoading] = React.useState(false)
+  const [notificationsError, setNotificationsError] = React.useState<string | null>(null)
+  const isAuthenticated = contentService.isAuthenticated()
 
   React.useEffect(() => {
     const unsubscribe = contentService.subscribe(() => {
@@ -80,6 +75,41 @@ export default function Inbox() {
       cancelled = true
     }
   }, [])
+
+  React.useEffect(() => {
+    let cancelled = false
+    if (!isAuthenticated) {
+      setNotifications([])
+      setNotificationsLoading(false)
+      setNotificationsError('Sign in to view your latest activity.')
+      return () => {
+        cancelled = true
+      }
+    }
+    setNotificationsLoading(true)
+    setNotificationsError(null)
+    contentService
+      .fetchNotifications()
+      .then((items) => {
+        if (!cancelled) {
+          setNotifications(items)
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Unable to load notifications.'
+          setNotificationsError(message)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setNotificationsLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, activeProfile.id])
 
   React.useEffect(() => {
     if (!activeConversationId && threads.length) {
@@ -233,19 +263,67 @@ export default function Inbox() {
   let tabContent: React.ReactNode
 
   if (tab === 'notifications') {
-    tabContent = notifications.map((item) => (
-      <article key={item.id} className={styles.notificationCard}>
-        <div className={styles.notificationIcon}>
-          {badgeIcon(item.type)}
+    if (!isAuthenticated) {
+      tabContent = (
+        <div className={styles.status}>
+          <p>Sign in to receive new follower, like, and comment alerts here.</p>
+          <button type="button" className={styles.statusAction} onClick={() => setAuthMode('login')}>
+            Sign in
+          </button>
         </div>
-        <div className={styles.notificationCopy}>
-          <span className={styles.notificationMessage}>
-            <span className={styles.notificationHandle}>{item.actor}</span> {item.message}
-          </span>
-          <span className={styles.notificationTime}>{item.timeAgo} ago</span>
+      )
+    } else if (notificationsLoading) {
+      tabContent = <div className={styles.status}>Checking for new activity...</div>
+    } else if (notificationsError) {
+      tabContent = (
+        <div className={styles.status}>
+          <p>{notificationsError}</p>
+          <button
+            type="button"
+            className={styles.statusAction}
+            onClick={() => {
+              setNotificationsLoading(true)
+              setNotificationsError(null)
+              contentService
+                .fetchNotifications()
+                .then((items) => setNotifications(items))
+                .catch((error) => {
+                  const message = error instanceof Error ? error.message : 'Unable to refresh notifications.'
+                  setNotificationsError(message)
+                })
+                .finally(() => setNotificationsLoading(false))
+            }}
+          >
+            Try again
+          </button>
         </div>
-      </article>
-    ))
+      )
+    } else if (!notifications.length) {
+      tabContent = (
+        <div className={styles.status}>
+          You're all caught up. When someone follows, likes, or comments on your videos, it will appear here.
+        </div>
+      )
+    } else {
+      tabContent = notifications.map((item) => {
+        const actorHandle = formatHandle(item.actor.handle || item.actor.name)
+        const copy = formatNotificationCopy(item)
+        return (
+          <article key={item.id} className={styles.notificationCard}>
+            <div className={styles.notificationIcon}>{badgeIcon(item.type)}</div>
+            <div className={styles.notificationCopy}>
+              <span className={styles.notificationMessage}>
+                <span className={styles.notificationHandle}>{actorHandle}</span> {copy}
+              </span>
+              {item.commentPreview ? (
+                <span className={styles.notificationPreview}>{item.commentPreview}</span>
+              ) : null}
+              <span className={styles.notificationTime}>{formatRelativeTime(item.createdAt)}</span>
+            </div>
+          </article>
+        )
+      })
+    }
   } else if (tab === 'messages') {
     if (threadsLoading) {
       tabContent = <div className={styles.status}>Loading conversations...</div>
@@ -458,17 +536,32 @@ export default function Inbox() {
   )
 }
 
-function badgeIcon(type: NotificationItem['type']) {
+function badgeIcon(type: NotificationSummary['type']) {
   switch (type) {
     case 'like':
       return '<3'
     case 'comment':
       return 'C'
-    case 'donation':
-      return '$'
     case 'follow':
     default:
       return '+'
+  }
+}
+
+function formatNotificationCopy(item: NotificationSummary): string {
+  switch (item.type) {
+    case 'follow':
+      return 'started following you.'
+    case 'like': {
+      const label = item.videoTitle ? `"${item.videoTitle}"` : 'your video'
+      return `liked ${label}.`
+    }
+    case 'comment': {
+      const label = item.videoTitle ? `"${item.videoTitle}"` : 'your video'
+      return `commented on ${label}.`
+    }
+    default:
+      return 'sent you an update.'
   }
 }
 

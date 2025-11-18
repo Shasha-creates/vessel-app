@@ -25,15 +25,17 @@ export async function ensureVideoEngagementTables(): Promise<void> {
   `)
 }
 
-export async function likeVideo(userId: string, videoId: string): Promise<void> {
-  await pool.query(
+export async function likeVideo(userId: string, videoId: string): Promise<boolean> {
+  const result = await pool.query(
     `
       INSERT INTO video_likes (video_id, user_id)
       VALUES ($1, $2)
       ON CONFLICT DO NOTHING
+      RETURNING 1
     `,
     [videoId, userId]
   )
+  return (result.rowCount ?? 0) > 0
 }
 
 export async function unlikeVideo(userId: string, videoId: string): Promise<void> {

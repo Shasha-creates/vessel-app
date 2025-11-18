@@ -1,6 +1,6 @@
 import React from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import { contentService, type Video, type ActiveProfile } from "../services/contentService"
+import { contentService, type Video, type ActiveProfile, type FollowStats } from "../services/contentService"
 import { formatLikes } from "../services/mockData"
 import styles from "./Profile.module.css"
 
@@ -30,6 +30,7 @@ export default function Profile() {
   const [showFollowingList, setShowFollowingList] = React.useState(false)
   const [showFollowersList, setShowFollowersList] = React.useState(false)
   const [followBusy, setFollowBusy] = React.useState(false)
+  const [followStats, setFollowStats] = React.useState<FollowStats | null>(null)
 
   React.useEffect(() => {
     const unsubscribe = contentService.subscribe(() => {
@@ -105,6 +106,31 @@ export default function Profile() {
   }, [targetId, isSelf])
 
   React.useEffect(() => {
+    let cancelled = false
+    if (!targetId) {
+      setFollowStats(null)
+      return () => {
+        cancelled = true
+      }
+    }
+    contentService
+      .fetchFollowStats(targetId)
+      .then((stats) => {
+        if (!cancelled) {
+          setFollowStats(stats)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFollowStats(null)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [targetId])
+
+  React.useEffect(() => {
     if (!followTargetId) return
     setIsFollowing(contentService.isFollowing(followTargetId))
   }, [followTargetId])
@@ -146,8 +172,8 @@ export default function Profile() {
   }, [ensureHandle, followerEstimate, isGuest])
 
   const gridSource = tab === "videos" ? clips : tab === "liked" ? likedClips : savedClips
-  const followingCount = isGuest ? 0 : followingHandles.length
-  const followerCount = isGuest ? 0 : Math.round(followerEstimate)
+  const followingCount = followStats?.following ?? (isGuest ? 0 : followingHandles.length)
+  const followerCount = followStats?.followers ?? (isGuest ? 0 : Math.round(followerEstimate))
 
   const handleFollowToggle = React.useCallback(async () => {
     if (!followTargetId || followBusy) return
@@ -164,13 +190,17 @@ export default function Profile() {
         await contentService.followUser(followTargetId)
         setIsFollowing(true)
       }
+      if (targetId) {
+        const stats = await contentService.fetchFollowStats(targetId)
+        setFollowStats(stats)
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to update follow status. Please try again.'
       window.alert(message)
     } finally {
       setFollowBusy(false)
     }
-  }, [followBusy, followTargetId, isFollowing])
+  }, [followBusy, followTargetId, isFollowing, isAuthenticated, targetId])
 
   function copyProfileLink() {
     const shareId = targetId || activeProfile.id

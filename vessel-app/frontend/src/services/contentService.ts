@@ -138,6 +138,16 @@ type ApiThreadSummary = {
   updatedAt: string
 }
 
+type ApiNotificationSummary = {
+  id: string
+  type: 'follow' | 'like' | 'comment'
+  createdAt: string
+  videoId?: string | null
+  videoTitle?: string | null
+  commentPreview?: string | null
+  actor: ApiUser
+}
+
 type ThreadParticipant = {
   id: string
   handle: string
@@ -162,6 +172,26 @@ type MessageThread = {
   lastMessage?: ThreadMessage | null
   unreadCount: number
   updatedAt: string
+}
+
+type NotificationSummary = {
+  id: string
+  type: 'follow' | 'like' | 'comment'
+  createdAt: string
+  actor: {
+    id: string
+    handle?: string
+    name: string
+    photoUrl?: string
+  }
+  videoId?: string | null
+  videoTitle?: string | null
+  commentPreview?: string | null
+}
+
+type FollowStats = {
+  followers: number
+  following: number
 }
 
 type ApiFeedVideo = {
@@ -1042,6 +1072,23 @@ function mapApiVideo(video: ApiFeedVideo): Video {
   }
 }
 
+function mapApiNotification(notification: ApiNotificationSummary): NotificationSummary {
+  return {
+    id: notification.id,
+    type: notification.type,
+    createdAt: notification.createdAt,
+    actor: {
+      id: notification.actor.id,
+      handle: notification.actor.handle ?? undefined,
+      name: notification.actor.name,
+      photoUrl: notification.actor.photoUrl ?? undefined,
+    },
+    videoId: notification.videoId ?? undefined,
+    videoTitle: notification.videoTitle ?? undefined,
+    commentPreview: notification.commentPreview ?? undefined,
+  }
+}
+
 function mapApiComment(comment: ApiVideoComment): VideoComment {
   return {
     id: comment.id,
@@ -1312,6 +1359,22 @@ export const contentService = {
     mergeRemoteFeed(mapped, { silent: true })
     return mapped
   },
+  async fetchNotifications(): Promise<NotificationSummary[]> {
+    if (!hasAuthSession()) {
+      throw new Error('Sign in to view your notifications.')
+    }
+    const payload = await getJson<{ notifications: ApiNotificationSummary[] }>('/api/notifications', true)
+    return payload.notifications.map(mapApiNotification)
+  },
+  async fetchFollowStats(profileId: string): Promise<FollowStats> {
+    const trimmed = profileId.trim()
+    if (!trimmed) {
+      throw new Error('Profile handle is required.')
+    }
+    const normalized = normalizeHandleMatch(trimmed)
+    const identifier = normalized || trimmed
+    return getJson<FollowStats>(`/api/follows/profiles/${encodeURIComponent(identifier)}/stats`)
+  },
   async fetchCollectionFeed(collection: ContentCollection): Promise<Video[]> {
     const curated = filterFaithCentric(getLibrary().filter((clip) => clip.collection === collection))
     return sortForFeed(curated)
@@ -1468,4 +1531,6 @@ export type {
   MessageThread,
   ThreadMessage,
   VideoComment,
+  NotificationSummary,
+  FollowStats,
 }

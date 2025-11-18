@@ -11,6 +11,8 @@ import {
   type VideoCommentRow,
 } from '../services/videoEngagementService'
 import { presentUser } from '../services/userService'
+import { getVideoById } from '../services/videoFeedService'
+import { recordNotification } from '../services/notificationService'
 
 const router = Router()
 
@@ -24,8 +26,21 @@ router.post('/:videoId/like', requireAuth, async (req, res, next) => {
     if (!videoId) {
       return res.status(400).json({ message: 'videoId is required' })
     }
-    await likeVideo(req.authUser!.id, videoId)
+    const video = await getVideoById(videoId)
+    if (!video) {
+      return res.status(404).json({ message: 'Video not found.' })
+    }
+    const inserted = await likeVideo(req.authUser!.id, videoId)
     const likes = await listVideoLikes(videoId)
+    if (inserted && video.user.id !== req.authUser!.id) {
+      await recordNotification({
+        recipientId: video.user.id,
+        actorId: req.authUser!.id,
+        type: 'like',
+        videoId: video.id,
+        videoTitle: video.title,
+      })
+    }
     res.json({ count: likes.length })
   } catch (error) {
     next(error)
@@ -78,8 +93,22 @@ router.post('/:videoId/comments', requireAuth, async (req, res, next) => {
     if (!videoId) {
       return res.status(400).json({ message: 'videoId is required' })
     }
+    const video = await getVideoById(videoId)
+    if (!video) {
+      return res.status(404).json({ message: 'Video not found.' })
+    }
     const payload = commentSchema.parse(req.body)
     const comment = await addVideoComment(req.authUser!.id, videoId, payload.body)
+    if (video.user.id !== req.authUser!.id) {
+      await recordNotification({
+        recipientId: video.user.id,
+        actorId: req.authUser!.id,
+        type: 'comment',
+        videoId: video.id,
+        videoTitle: video.title,
+        commentPreview: payload.body.slice(0, 160),
+      })
+    }
     res.status(201).json({ comment: presentComment(comment) })
   } catch (error) {
     next(error)

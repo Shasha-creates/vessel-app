@@ -95,6 +95,12 @@
   color: #000;
 }
 
+.notificationPreview {
+  font-size: 0.85rem;
+  color: rgba(7, 7, 16, 0.8);
+  font-style: italic;
+}
+
 .notificationTime {
   font-size: 0.82rem;
   color: rgba(7, 7, 16, 0.7);
