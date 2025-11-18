@@ -133,6 +133,15 @@ export default function Following() {
     }
   }, [])
 
+  const handleLike = React.useCallback(async (clipId: string) => {
+    try {
+      await contentService.recordLike(clipId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'We could not register that like. Please try again.'
+      window.alert(message)
+    }
+  }, [])
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -166,7 +175,7 @@ export default function Following() {
               <section key={clip.id} className={styles.slide}>
                 <VideoCard
                   video={clip}
-                  onLike={() => contentService.recordLike(clip.id)}
+                  onLike={() => handleLike(clip.id)}
                   onComment={() => setCommentClip(clip)}
                   onBookmark={() => handleBookmark(clip.id)}
                   onShare={() => {

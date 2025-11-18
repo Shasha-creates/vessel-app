@@ -1,38 +1,9 @@
 import React from "react"
-import { contentService, type Video } from "../services/contentService"
+import { contentService, type Video, type VideoComment } from "../services/contentService"
 import { payfastClient } from "../services/payfastClient"
 import { stripeClient } from "../services/stripeClient"
+import { formatRelativeTime } from "../utils/time"
 import styles from "./VideoSheets.module.css"
-
-type CommentEntry = {
-  id: string
-  author: string
-  message: string
-  timestamp: string
-}
-
-const COMMENT_POOL: CommentEntry[] = [
-  { id: "c1", author: "Sophia", message: "So encouraging, thank you for sharing!", timestamp: "2h" },
-  { id: "c2", author: "Mason", message: "Playing this on repeat this week.", timestamp: "6h" },
-  { id: "c3", author: "Noah", message: "Needed this reminder today.", timestamp: "1d" },
-  { id: "c4", author: "Lena", message: "This hit home for our youth group.", timestamp: "3d" },
-  { id: "c5", author: "Eden", message: "We shared this in Sunday service!", timestamp: "5d" },
-]
-
-function buildComments(clip: Video): CommentEntry[] {
-  const total = Math.max(4, Math.min(12, (clip.comments ?? 0) % 10 + 4))
-  const generated: CommentEntry[] = []
-  for (let i = 0; i < total; i += 1) {
-    const poolEntry = COMMENT_POOL[i % COMMENT_POOL.length]
-    generated.push({
-      id: `${clip.id}-comment-${i}`,
-      author: poolEntry.author,
-      message: poolEntry.message,
-      timestamp: poolEntry.timestamp,
-    })
-  }
-  return generated
-}
 
 type CommentSheetProps = {
   clip: Video
@@ -40,25 +11,59 @@ type CommentSheetProps = {
 }
 
 export function CommentSheet({ clip, onClose }: CommentSheetProps) {
-  const [entries, setEntries] = React.useState<CommentEntry[]>(() => buildComments(clip))
+  const [entries, setEntries] = React.useState<VideoComment[]>([])
   const [input, setInput] = React.useState("")
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+  const [posting, setPosting] = React.useState(false)
+
+  React.useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(null)
+    contentService
+      .fetchClipComments(clip.id)
+      .then((list) => {
+        if (active) {
+          setEntries(list)
+        }
+      })
+      .catch((err) => {
+        if (!active) return
+        const message = err instanceof Error ? err.message : "Unable to load comments right now."
+        setError(message)
+      })
+      .finally(() => {
+        if (active) {
+          setLoading(false)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [clip.id])
+
+  const headerTitle = loading ? "Comments" : `${entries.length} comments`
 
   const submit = React.useCallback(
-    (event: React.FormEvent) => {
+    async (event: React.FormEvent) => {
       event.preventDefault()
       const trimmed = input.trim()
-      if (!trimmed) return
-      contentService.recordComment(clip.id)
-      const newEntry: CommentEntry = {
-        id: `${clip.id}-user-${Date.now()}`,
-        author: "You",
-        message: trimmed,
-        timestamp: "Just now",
+      if (!trimmed || posting) return
+      setPosting(true)
+      try {
+        const comment = await contentService.recordComment(clip.id, trimmed)
+        setEntries((prev) => [comment, ...prev])
+        setInput("")
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "We couldn't post your encouragement. Please try again in a moment."
+        window.alert(message)
+      } finally {
+        setPosting(false)
       }
-      setEntries((prev) => [newEntry, ...prev])
-      setInput("")
     },
-    [clip.id, input]
+    [clip.id, input, posting]
   )
 
   return (
@@ -66,21 +71,29 @@ export function CommentSheet({ clip, onClose }: CommentSheetProps) {
       <div className={styles.sheetPanel}>
         <div className={styles.sheetHandle} />
         <div className={styles.sheetHeader}>
-          <h3 className={styles.sheetTitle}>{`${entries.length} comments`}</h3>
+          <h3 className={styles.sheetTitle}>{headerTitle}</h3>
           <button type="button" className={styles.sheetClose} onClick={onClose} aria-label="Close comments">
             x
           </button>
         </div>
         <div className={styles.sheetBody}>
+          {loading ? <div className={styles.sheetStatus}>Loading comments...</div> : null}
+          {error ? <div className={`${styles.sheetStatus} ${styles.sheetError}`}>{error}</div> : null}
+          {!loading && !error && entries.length === 0 ? (
+            <div className={styles.sheetStatus}>Be the first to encourage this creator.</div>
+          ) : null}
           {entries.map((entry) => (
             <div key={entry.id} className={styles.commentItem}>
-              <div className={styles.commentAvatar}>{entry.author.slice(0, 1).toUpperCase()}</div>
+              <div className={styles.commentAvatar}>{(entry.user.name || "Friend").slice(0, 1).toUpperCase()}</div>
               <div className={styles.commentContent}>
                 <div className={styles.commentHeader}>
-                  <span>{entry.author}</span>
-                  <span className={styles.commentMeta}>{entry.timestamp}</span>
+                  <span>{entry.user.name}</span>
+                  <span className={styles.commentMeta}>
+                    {entry.user.handle ? `@${entry.user.handle}` : "Verified listener"} •{" "}
+                    {formatRelativeTime(entry.createdAt, true)}
+                  </span>
                 </div>
-                <p className={styles.commentText}>{entry.message}</p>
+                <p className={styles.commentText}>{entry.body}</p>
               </div>
             </div>
           ))}
@@ -93,8 +106,8 @@ export function CommentSheet({ clip, onClose }: CommentSheetProps) {
               placeholder="Add a comment"
               aria-label="Add a comment"
             />
-            <button type="submit" className={styles.donateConfirm} disabled={!input.trim()}>
-              Post
+            <button type="submit" className={styles.donateConfirm} disabled={!input.trim() || posting}>
+              {posting ? "Posting..." : "Post"}
             </button>
           </form>
         </div>
