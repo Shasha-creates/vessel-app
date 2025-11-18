@@ -1,6 +1,6 @@
 ﻿:root {
-  color-scheme: dark;
-  --app-background: radial-gradient(circle at top, #1c1f2b 0%, #050607 40%, #050505 100%);
+  color-scheme: light;
+  --app-background: radial-gradient(circle at top, #fffdf5 0%, #ffeccd 60%, #ffe0b1 100%);
   --text-primary: #f6f7fb;
   --text-secondary: #bfc3d9;
   --text-muted: #7b7e90;
