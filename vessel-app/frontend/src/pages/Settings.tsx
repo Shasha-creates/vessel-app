@@ -1,15 +1,11 @@
 import React from "react"
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
-import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom"
 import { contentService, type ActiveProfile } from "../services/contentService"
 import { COUNTRY_OPTIONS } from "../shared/countryOptions"
 import styles from "./Profile.module.css"
 
-<<<<<<< HEAD
-type AuthMode = "signup" | "login"
-=======
 export type AuthMode = "signup" | "login"
->>>>>>> 8a33d6a (UI Changes)
 
 const normalize = (value?: string) => (value || "").toLowerCase()
 
@@ -93,7 +89,7 @@ export default function Settings() {
         <div className={styles.settingsPanel}>
           <div className={styles.settingsHeader}>
             <h3>Account settings</h3>
-            <p>Manage how you appear across Vessel.</p>
+            <p>Manage how you appear across Godly Me.</p>
           </div>
           <div className={styles.settingsSummary}>
             <SettingsRow label="Status" value={isGuest ? "Browsing as guest" : "Signed in"} />
@@ -171,16 +167,12 @@ type AuthOverlayProps = {
   onComplete: () => void
 }
 
-<<<<<<< HEAD
-function AuthOverlay({ mode, activeProfile, onClose, onSwitchMode, onComplete }: AuthOverlayProps) {
-=======
 export function AuthOverlay({ mode, activeProfile, onClose, onSwitchMode, onComplete }: AuthOverlayProps) {
->>>>>>> 8a33d6a (UI Changes)
   return (
     <div className={styles.authBackdrop}>
       <div className={styles.authPanel} role="dialog" aria-modal="true">
         <div className={styles.authHeader}>
-          <h3 className={styles.authTitle}>{mode === "signup" ? "Create your Vessel profile" : "Sign in to Vessel"}</h3>
+          <h3 className={styles.authTitle}>{mode === "signup" ? "Create your Godly Me profile" : "Sign in to Godly Me"}</h3>
           <button type="button" className={styles.authClose} onClick={onClose} aria-label="Close">
             x
           </button>
@@ -521,13 +513,17 @@ type SigninFormProps = {
 function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [verificationCode, setVerificationCode] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [resendBusy, setResendBusy] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
     const trimmedEmail = email.trim().toLowerCase()
     const trimmedPassword = password.trim()
+    const trimmedCode = verificationCode.trim()
     if (!trimmedEmail) {
       setError("Enter your email")
       return
@@ -538,6 +534,12 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
     }
     setBusy(true)
     try {
+      if (trimmedCode) {
+        await contentService.verifyEmailCode(trimmedEmail, trimmedCode)
+        setStatus("Email verified! Signing you in...")
+      } else {
+        setStatus(null)
+      }
       await contentService.signInWithCredentials(trimmedEmail, trimmedPassword)
       setError(null)
       window.setTimeout(() => {
@@ -547,8 +549,28 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to sign in right now."
       setError(message)
+      setStatus(null)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleResendCode() {
+    const trimmedEmail = email.trim().toLowerCase()
+    if (!trimmedEmail) {
+      setError("Enter your email before requesting a new code.")
+      return
+    }
+    setResendBusy(true)
+    try {
+      await contentService.resendVerification(trimmedEmail)
+      setStatus(`We sent a new code to ${trimmedEmail}.`)
+      setError(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unable to resend the code right now."
+      setError(message)
+    } finally {
+      setResendBusy(false)
     }
   }
 
@@ -563,7 +585,7 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@example.com"
-          disabled={busy}
+          disabled={busy || resendBusy}
         />
       </label>
       <label className={styles.authField}>
@@ -577,7 +599,31 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
           disabled={busy}
         />
       </label>
+      <label className={styles.authField}>
+        <span>Verification code</span>
+        <input
+          className={styles.authInput}
+          type="text"
+          value={verificationCode}
+          onChange={(event) => setVerificationCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          placeholder="Enter 6-digit code (optional)"
+          disabled={busy}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={6}
+        />
+        <small className={styles.authHint}>Only needed if you are verifying a newly created account.</small>
+        <button
+          type="button"
+          className={styles.authLink}
+          onClick={handleResendCode}
+          disabled={busy || resendBusy}
+        >
+          {resendBusy ? "Sending code..." : "Resend verification code"}
+        </button>
+      </label>
       {error ? <div className={styles.authError}>{error}</div> : null}
+      {status ? <div className={styles.authSuccess}>{status}</div> : null}
       <div className={styles.authActions}>
         <button type="submit" className={styles.authPrimary} disabled={busy}>
           {busy ? "Signing in..." : "Sign in"}
@@ -587,15 +633,16 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
         </button>
       </div>
       <div className={styles.authFooter}>
-        Need a profile?{" "}
-        <button type="button" className={styles.authLink} onClick={() => onSwitchMode("signup")}>
-          Create one
-        </button>
+        <div>
+          Need a profile?{" "}
+          <button type="button" className={styles.authLink} onClick={() => onSwitchMode("signup")}>
+            Create one
+          </button>
+        </div>
+        <Link to="/forgot-password" className={styles.authLink}>
+          Forgot password?
+        </Link>
       </div>
     </form>
   )
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 8a33d6a (UI Changes)
