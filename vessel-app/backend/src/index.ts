@@ -48,7 +48,7 @@ function resolvePort(value: string | undefined): number {
 }
 
 app.get('/api/hello', (_req, res) => {
-  res.json({ message: 'Hello from Vessel backend' })
+  res.json({ message: 'Hello from godlyme backend' })
 })
 
 app.get('/api/health', async (_req, res) => {
@@ -68,6 +68,7 @@ app.use('/api/feed', feedRouter)
 app.use('/api/videos', videoEngagementRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/notifications', notificationsRouter)
+app.set('trust proxy', true)
 
 async function start() {
   let port: number
