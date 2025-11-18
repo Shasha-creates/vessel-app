@@ -145,8 +145,15 @@ export default function Profile() {
     return Array.from({ length: count }, (_, i) => ensureHandle(`supporter_${i + 1}`))
   }, [ensureHandle, followerEstimate, isGuest])
 
-  const gridSource = tab === "videos" ? clips : tab === "liked" ? likedClips : savedClips
-  const followingCount = isGuest ? 0 : followingHandles.length
+  const gridSource = React.useMemo(() => {
+  if (tab === 'videos') return clips
+  if (tab === 'liked') return likedClips
+  return savedClips
+}, [tab, clips, likedClips, savedClips])
+
+const gridClassName =
+  tab === 'videos' ? `${styles.gridContent} ${styles.gridContentTight}` : styles.gridContent
+const followingCount = isGuest ? 0 : followingHandles.length
   const followerCount = isGuest ? 0 : Math.round(followerEstimate)
 
   const handleFollowToggle = React.useCallback(async () => {
