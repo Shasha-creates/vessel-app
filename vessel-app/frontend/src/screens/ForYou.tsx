@@ -135,6 +135,15 @@ export default function ForYou({ filter }: Props) {
     }
   }, [])
 
+  const handleLike = React.useCallback(async (clipId: string) => {
+    try {
+      await contentService.recordLike(clipId)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'We could not register that like. Please try again.'
+      window.alert(message)
+    }
+  }, [])
+
   const openProfile = React.useCallback(
     (clip: Video) => {
       const target = normalizeProfileTarget(clip)
@@ -172,7 +181,7 @@ export default function ForYou({ filter }: Props) {
               <section key={clip.id} className={styles.slide}>
                 <VideoCard
                   video={clip}
-                  onLike={() => contentService.recordLike(clip.id)}
+                  onLike={() => handleLike(clip.id)}
                   onComment={() => setCommentClip(clip)}
                   onBookmark={() => handleBookmark(clip.id)}
                   onShare={() => {

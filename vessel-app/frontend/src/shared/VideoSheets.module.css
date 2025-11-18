@@ -58,6 +58,18 @@
   gap: 1rem;
 }
 
+.sheetStatus {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1rem 0;
+  font-size: 0.95rem;
+}
+
+.sheetError {
+  color: #ff9da5;
+  font-weight: 600;
+}
+
 .commentItem {
   display: flex;
   gap: 0.85rem;

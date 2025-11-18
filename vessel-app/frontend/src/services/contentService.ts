@@ -36,6 +36,22 @@ let remoteFeed: Video[] = []
 type StoredUpload = Omit<Video, 'videoUrl'>
 type CommentableVideo = Video
 
+type ApiVideoComment = {
+  id: string
+  videoId: string
+  body: string
+  createdAt: string
+  user: ApiUser
+}
+
+type VideoComment = {
+  id: string
+  videoId: string
+  body: string
+  createdAt: string
+  user: ApiUser
+}
+
 type ActiveProfile = {
   id: string
   name: string
@@ -274,6 +290,16 @@ function getStoredAuthToken(): string | null {
 
 function hasAuthSession(): boolean {
   return Boolean(getStoredAuthToken())
+}
+
+function requireVerifiedSession(action: string): void {
+  if (!hasAuthSession()) {
+    throw new Error(`Sign in to ${action}.`)
+  }
+  const profile = getActiveProfile()
+  if (!profile.isVerified) {
+    throw new Error(`Only verified Vessel profiles can ${action}.`)
+  }
 }
 
 function setStoredAuthToken(token: string | null): void {
@@ -1016,6 +1042,16 @@ function mapApiVideo(video: ApiFeedVideo): Video {
   }
 }
 
+function mapApiComment(comment: ApiVideoComment): VideoComment {
+  return {
+    id: comment.id,
+    videoId: comment.videoId,
+    body: comment.body,
+    createdAt: comment.createdAt,
+    user: comment.user,
+  }
+}
+
 function mapApiThreadMessage(message: ApiThreadMessage): ThreadMessage {
   return {
     id: message.id,
@@ -1334,35 +1370,48 @@ export const contentService = {
     return clip
   },
   async recordLike(clipId: string) {
-    if (getStoredAuthToken()) {
-      await postJson(`/api/videos/${encodeURIComponent(clipId)}/like`, {}, true)
-    }
-
+    requireVerifiedSession('like videos')
     const clip = getLibrary().find((item) => item.id === clipId)
     if (!clip) {
-      notify()
-      return
+      throw new Error('Video not found.')
     }
-    clip.likes += 1
-    clip.likesDisplay = formatLikes(clip.likes)
+    const payload = await postJson<{ count: number }>(`/api/videos/${encodeURIComponent(clipId)}/like`, {}, true)
+    clip.likes = payload.count
+    clip.likesDisplay = formatLikes(payload.count)
     persistIfUpload(clipId)
     notify()
+    return payload.count
   },
-  async recordComment(clipId: string, body?: string) {
-    const clip = getLibrary().find((item) => item.id === clipId)
-    if (!clip) return
-
-    if (getStoredAuthToken()) {
-      await postJson(
-        `/api/videos/${encodeURIComponent(clipId)}/comments`,
-        { body: body || 'Amen! Thanks for sharing this.' },
-        true
-      )
+  async fetchClipComments(clipId: string): Promise<VideoComment[]> {
+    const trimmedId = clipId.trim()
+    if (!trimmedId) {
+      return []
     }
-
+    const payload = await getJson<{ comments: ApiVideoComment[] }>(
+      `/api/videos/${encodeURIComponent(trimmedId)}/comments`,
+      false
+    )
+    return payload.comments.map(mapApiComment)
+  },
+  async recordComment(clipId: string, body: string): Promise<VideoComment> {
+    requireVerifiedSession('comment on videos')
+    const clip = getLibrary().find((item) => item.id === clipId)
+    if (!clip) {
+      throw new Error('Video not found.')
+    }
+    const trimmed = body.trim()
+    if (!trimmed) {
+      throw new Error('Share something meaningful before posting.')
+    }
+    const payload = await postJson<{ comment: ApiVideoComment }>(
+      `/api/videos/${encodeURIComponent(clipId)}/comments`,
+      { body: trimmed },
+      true
+    )
     clip.comments = (clip.comments ?? 0) + 1
     persistIfUpload(clipId)
     notify()
+    return mapApiComment(payload.comment)
   },
   recordShare(clipId: string) {
     const clip = getLibrary().find((item) => item.id === clipId)
@@ -1418,4 +1467,5 @@ export type {
   SuggestedConnection,
   MessageThread,
   ThreadMessage,
+  VideoComment,
 }
