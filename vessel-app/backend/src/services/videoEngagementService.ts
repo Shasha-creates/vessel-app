@@ -41,7 +41,7 @@ export async function unlikeVideo(userId: string, videoId: string): Promise<void
 }
 
 export async function listVideoLikes(videoId: string): Promise<DbUser[]> {
-  const result = await pool.query(
+  const result = await pool.query<DbUser>(
     `
       SELECT u.*
       FROM video_likes vl
@@ -63,8 +63,15 @@ export type VideoCommentRow = {
   user: DbUser
 }
 
+type InsertedCommentRow = {
+  id: string
+  video_id: string
+  body: string
+  created_at: Date
+}
+
 export async function addVideoComment(userId: string, videoId: string, body: string): Promise<VideoCommentRow> {
-  const result = await pool.query(
+  const result = await pool.query<InsertedCommentRow>(
     `
       INSERT INTO video_comments (video_id, user_id, body)
       VALUES ($1, $2, $3)
@@ -73,21 +80,29 @@ export async function addVideoComment(userId: string, videoId: string, body: str
     [videoId, userId, body]
   )
   const commentRow = result.rows[0]
-  const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId])
+  const userResult = await pool.query<DbUser>('SELECT * FROM users WHERE id = $1', [userId])
   return {
     ...commentRow,
     user: mapRow(userResult.rows[0]),
   }
 }
 
+type VideoCommentQueryRow = {
+  comment_id: string
+  video_id: string
+  body: string
+  comment_created_at: Date
+  user_json: DbUser
+}
+
 export async function listVideoComments(videoId: string): Promise<VideoCommentRow[]> {
-  const result = await pool.query(
+  const result = await pool.query<VideoCommentQueryRow>(
     `
       SELECT c.id AS comment_id,
              c.video_id,
              c.body,
              c.created_at AS comment_created_at,
-             u.*
+             row_to_json(u) AS user_json
       FROM video_comments c
       JOIN users u ON u.id = c.user_id
       WHERE c.video_id = $1
@@ -102,22 +117,7 @@ export async function listVideoComments(videoId: string): Promise<VideoCommentRo
     video_id: row.video_id,
     body: row.body,
     created_at: row.comment_created_at,
-    user: mapRow({
-      id: row.id,
-      handle: row.handle,
-      name: row.name,
-      email: row.email,
-      password_hash: row.password_hash,
-      church: row.church,
-      country: row.country,
-      photo_url: row.photo_url,
-      is_verified: row.is_verified,
-      verification_token: row.verification_token,
-      verification_token_expires: row.verification_token_expires,
-      email_hash: row.email_hash,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    }),
+    user: mapRow(row.user_json),
   }))
 }
 

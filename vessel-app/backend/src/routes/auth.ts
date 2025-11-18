@@ -10,8 +10,10 @@ import {
   verifyUserByCode,
   presentUser,
   type DbUser,
+  createPasswordResetToken,
+  resetPasswordWithToken,
 } from '../services/userService'
-import { buildVerificationEmail, sendEmail } from '../services/emailService'
+import { buildVerificationEmail, buildPasswordResetEmail, sendEmail } from '../services/emailService'
 
 const router = Router()
 
@@ -40,6 +42,15 @@ const verifySchema = z.object({
 
 const resendSchema = z.object({
   email: z.string().email(),
+})
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+})
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  password: z.string().min(6).max(200),
 })
 
 function getJwtSecret(): string {
@@ -172,6 +183,43 @@ router.post('/resend-verification', async (req, res, next) => {
       console.error('Failed to send verification email', err)
     })
     res.json({ message: 'Verification code resent.' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const payload = forgotPasswordSchema.parse(req.body)
+    const normalizedEmail = payload.email.trim().toLowerCase()
+    const successMessage = 'If an account exists for that email, we sent password reset instructions.'
+    const user = await createPasswordResetToken(normalizedEmail)
+    if (user?.reset_token) {
+      const emailPayload = buildPasswordResetEmail(user.email, user.reset_token)
+      sendEmail(emailPayload).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.error('Failed to send password reset email', err)
+      })
+    }
+    res.json({ message: successMessage })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const payload = resetPasswordSchema.parse(req.body)
+    const user = await resetPasswordWithToken(payload.token, payload.password)
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token.' })
+    }
+    const token = createToken(user)
+    res.json({
+      message: 'Password updated. You are now signed in.',
+      token,
+      user: presentUser(user),
+    })
   } catch (error) {
     next(error)
   }

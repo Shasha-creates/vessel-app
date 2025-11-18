@@ -518,6 +518,7 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [resendBusy, setResendBusy] = useState(false)
+  const [needsVerification, setNeedsVerification] = useState(false)
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -532,11 +533,16 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
       setError("Enter your password")
       return
     }
+    if (needsVerification && trimmedCode.length < 4) {
+      setError("Enter the 6-digit verification code.")
+      return
+    }
     setBusy(true)
     try {
-      if (trimmedCode) {
+      if (needsVerification && trimmedCode) {
         await contentService.verifyEmailCode(trimmedEmail, trimmedCode)
         setStatus("Email verified! Signing you in...")
+        setNeedsVerification(false)
       } else {
         setStatus(null)
       }
@@ -548,8 +554,14 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
       onComplete()
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unable to sign in right now."
+      const payload = err instanceof Error ? (err as any).payload : null
+      if (payload?.needsVerification) {
+        setNeedsVerification(true)
+        setStatus("Please verify your email before signing in.")
+      } else {
+        setStatus(null)
+      }
       setError(message)
-      setStatus(null)
     } finally {
       setBusy(false)
     }
@@ -599,29 +611,31 @@ function SigninForm({ onComplete, onSwitchMode, onClose }: SigninFormProps) {
           disabled={busy}
         />
       </label>
-      <label className={styles.authField}>
-        <span>Verification code</span>
-        <input
-          className={styles.authInput}
-          type="text"
-          value={verificationCode}
-          onChange={(event) => setVerificationCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
-          placeholder="Enter 6-digit code (optional)"
-          disabled={busy}
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={6}
-        />
-        <small className={styles.authHint}>Only needed if you are verifying a newly created account.</small>
-        <button
-          type="button"
-          className={styles.authLink}
-          onClick={handleResendCode}
-          disabled={busy || resendBusy}
-        >
-          {resendBusy ? "Sending code..." : "Resend verification code"}
-        </button>
-      </label>
+      {needsVerification ? (
+        <label className={styles.authField}>
+          <span>Verification code</span>
+          <input
+            className={styles.authInput}
+            type="text"
+            value={verificationCode}
+            onChange={(event) => setVerificationCode(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+            placeholder="Enter 6-digit code"
+            disabled={busy}
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={6}
+          />
+          <small className={styles.authHint}>Check your email for this code.</small>
+          <button
+            type="button"
+            className={styles.authLink}
+            onClick={handleResendCode}
+            disabled={busy || resendBusy}
+          >
+            {resendBusy ? "Sending code..." : "Resend verification code"}
+          </button>
+        </label>
+      ) : null}
       {error ? <div className={styles.authError}>{error}</div> : null}
       {status ? <div className={styles.authSuccess}>{status}</div> : null}
       <div className={styles.authActions}>

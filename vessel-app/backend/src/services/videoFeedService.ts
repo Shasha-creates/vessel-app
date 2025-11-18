@@ -100,6 +100,21 @@ export async function getVideoById(id: string): Promise<FeedVideoRecord | null> 
   return videos[0] ?? null
 }
 
+type VideoQueryRow = {
+  id: string
+  title: string
+  description: string | null
+  video_url: string
+  thumbnail_url: string | null
+  category: string
+  tags: string[] | null
+  duration_seconds: number | null
+  created_at: Date
+  like_count: number
+  comment_count: number
+  user_json: DbUser
+}
+
 async function queryVideos(options: ListOptions): Promise<FeedVideoRecord[]> {
   const limit = Math.min(Math.max(options.limit ?? 20, 1), 50)
   const values: unknown[] = []
@@ -127,7 +142,7 @@ async function queryVideos(options: ListOptions): Promise<FeedVideoRecord[]> {
   const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
   values.push(limit)
 
-  const result = await pool.query(
+  const result = await pool.query<VideoQueryRow>(
     `
       SELECT
         v.id,

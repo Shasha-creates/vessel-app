@@ -10,11 +10,7 @@ import {
   listVideosByAuthors,
   type FeedVideoRecord,
 } from '../services/videoFeedService'
-<<<<<<< HEAD
-import { presentUser } from '../services/userService'
-=======
 import { findUserByHandle, findUserById, presentUser } from '../services/userService'
->>>>>>> 8a33d6a (UI Changes)
 import { listFollowing } from '../services/followService'
 
 const router = Router()
@@ -64,21 +60,12 @@ router.get('/for-you', async (req, res, next) => {
 router.get('/following', requireAuth, async (req, res, next) => {
   try {
     const { limit, cursor } = parsePaginationQuery(req.query)
-<<<<<<< HEAD
-    const followees = await listFollowing(req.authUser!.id)
-    if (!followees.length) {
-      return res.json({ videos: [] })
-    }
-    const videos = await listVideosByAuthors(
-      followees.map((user) => user.id),
-=======
     const follower = await listFollowing(req.authUser!.id)
     if (!follower.length) {
       return res.json({ videos: [] })
     }
     const videos = await listVideosByAuthors(
       follower.map((user) => user.id),
->>>>>>> 8a33d6a (UI Changes)
       { limit, cursor }
     )
     res.json({ videos: videos.map(presentFeedVideo) })
@@ -87,8 +74,6 @@ router.get('/following', requireAuth, async (req, res, next) => {
   }
 })
 
-<<<<<<< HEAD
-=======
 router.get('/mine', requireAuth, async (req, res, next) => {
   try {
     const { limit, cursor } = parsePaginationQuery(req.query)
@@ -117,7 +102,6 @@ router.get('/profiles/:profileId', async (req, res, next) => {
   }
 })
 
->>>>>>> 8a33d6a (UI Changes)
 router.post('/videos', requireAuth, upload.single('file'), async (req, res, next) => {
   try {
     const payload = uploadSchema.parse(req.body)
@@ -187,8 +171,6 @@ function buildPublicUrl(req: Request, relativePath: string) {
   return `${origin}${relativePath.startsWith('/') ? relativePath : `/${relativePath}`}`
 }
 
-<<<<<<< HEAD
-=======
 async function resolveAuthorId(identifier: string): Promise<string | null> {
   const trimmed = identifier.trim()
   if (!trimmed) {
@@ -208,7 +190,6 @@ async function resolveAuthorId(identifier: string): Promise<string | null> {
   return null
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function presentFeedVideo(row: FeedVideoRecord) {
   return {
     id: row.id,

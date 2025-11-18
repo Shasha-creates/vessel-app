@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import React, { useState } from 'react'
-=======
 import React, { useEffect, useRef, useState } from 'react'
->>>>>>> 8a33d6a (UI Changes)
 import { useNavigate } from 'react-router-dom'
 import { contentService, type ContentCategory } from '../services/contentService'
 import styles from './Upload.module.css'
@@ -16,20 +12,13 @@ const categories: { value: ContentCategory; label: string }[] = [
 ]
 
 export default function Upload() {
-<<<<<<< HEAD
-=======
   const [isAuthenticated, setIsAuthenticated] = useState(contentService.isAuthenticated())
->>>>>>> 8a33d6a (UI Changes)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [category, setCategory] = useState<ContentCategory>('testimony')
   const [tags, setTags] = useState('hope, encouragement')
   const [error, setError] = useState<string | null>(null)
-<<<<<<< HEAD
-  const nav = useNavigate()
-
-=======
   const [cameraSupported, setCameraSupported] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -62,7 +51,6 @@ export default function Upload() {
     return unsubscribe
   }, [])
 
->>>>>>> 8a33d6a (UI Changes)
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!file) {
@@ -97,8 +85,6 @@ export default function Upload() {
     }
   }
 
-<<<<<<< HEAD
-=======
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] ?? null
     resetRecordedPreview()
@@ -214,7 +200,6 @@ export default function Upload() {
     )
   }
 
->>>>>>> 8a33d6a (UI Changes)
   return (
     <div className={styles.upload}>
       <h1>Share a Vessel Moment</h1>
@@ -252,13 +237,6 @@ export default function Upload() {
         </label>
         <label className={styles.fileInput}>
           <span>Upload video</span>
-<<<<<<< HEAD
-          <input type="file" accept="video/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-        </label>
-
-        <div className={styles.actions}>
-          <button type="submit">Upload to Vessel (mock)</button>
-=======
           <input type="file" accept="video/*" capture="environment" onChange={handleFileChange} />
         </label>
         {file ? <p className={styles.fileMeta}>Ready to upload: {file.name}</p> : null}
@@ -302,7 +280,6 @@ export default function Upload() {
 
         <div className={styles.actions}>
           <button type="submit">Upload to Vessel</button>
->>>>>>> 8a33d6a (UI Changes)
         </div>
         {error ? <p className={styles.error}>{error}</p> : null}
       </form>

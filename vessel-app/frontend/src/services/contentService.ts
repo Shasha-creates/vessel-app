@@ -1,4 +1,4 @@
-﻿import {
+import {
   videos as seedVideos,
   curatedGuides,
   formatLikes,
@@ -20,10 +20,7 @@ const ACTIVE_USER_EMAIL_KEY = 'vessel_user_email'
 const ACTIVE_USER_VERIFIED_KEY = 'vessel_user_verified'
 const AUTH_TOKEN_KEY = 'vessel_auth_token'
 const UPLOAD_STORAGE_KEY = 'vessel_user_uploads_v1'
-<<<<<<< HEAD
 const FOLLOWING_STORAGE_KEY = 'vessel_following_ids_v1'
-=======
->>>>>>> 8a33d6a (UI Changes)
 const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
 const DEFAULT_VIDEO_PLACEHOLDER = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 const DEFAULT_THUMB_PLACEHOLDER = 'https://placehold.co/640x360?text=Vessel'
@@ -33,13 +30,7 @@ const NETWORK_FAILURE_RATE = 0.05
 const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
 const MODERATION_CONTEXT_PROFILE = 'profile'
 const MODERATION_CONTEXT_UPLOAD = 'upload'
-<<<<<<< HEAD
-const DEFAULT_SAVED_IDS = ['psalm23-reflection']
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
-const GUEST_FOLLOW_DEFAULTS = ['sarah-grace', 'river-city-worship', 'pastor-ana'].map((id) => normalizeId(id))
-=======
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
->>>>>>> 8a33d6a (UI Changes)
 let remoteFeed: Video[] = []
 
 type StoredUpload = Omit<Video, 'videoUrl'>
@@ -91,8 +82,6 @@ type ContactMatch = {
   photoUrl: string | null
 }
 
-<<<<<<< HEAD
-=======
 type SuggestedConnection = {
   id: string
   handle: string
@@ -159,7 +148,6 @@ type MessageThread = {
   updatedAt: string
 }
 
->>>>>>> 8a33d6a (UI Changes)
 type ApiFeedVideo = {
   id: string
   title: string
@@ -284,13 +272,10 @@ function getStoredAuthToken(): string | null {
   return window.localStorage.getItem(AUTH_TOKEN_KEY)
 }
 
-<<<<<<< HEAD
-=======
 function hasAuthSession(): boolean {
   return Boolean(getStoredAuthToken())
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function setStoredAuthToken(token: string | null): void {
   if (typeof window === 'undefined') return
   if (token) {
@@ -298,11 +283,8 @@ function setStoredAuthToken(token: string | null): void {
   } else {
     window.localStorage.removeItem(AUTH_TOKEN_KEY)
   }
-<<<<<<< HEAD
-=======
   bookmarksHydrated = false
   bookmarkedIds = new Set()
->>>>>>> 8a33d6a (UI Changes)
 }
 
 function requireApiBaseUrl(): string {
@@ -310,6 +292,42 @@ function requireApiBaseUrl(): string {
     throw new Error('VITE_API_BASE_URL is not configured for this build.')
   }
   return API_BASE_URL
+}
+
+function resolveApiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_BASE_URL || '').trim()
+  const sanitized = raw.replace(/\/$/, '')
+
+  if (!sanitized) {
+    if (typeof window !== 'undefined' && window.location.origin) {
+      return window.location.origin.replace(/\/$/, '')
+    }
+    return ''
+  }
+
+  if (typeof window === 'undefined') {
+    return sanitized
+  }
+
+  try {
+    const parsed = new URL(sanitized)
+    const currentHost = window.location.hostname
+    const isCurrentHostLoopback = currentHost ? LOOPBACK_HOSTS.has(currentHost) : false
+    if (currentHost && !isCurrentHostLoopback && LOOPBACK_HOSTS.has(parsed.hostname)) {
+      parsed.hostname = currentHost
+    }
+    return parsed.toString().replace(/\/$/, '')
+  } catch {
+    try {
+      if (typeof window !== 'undefined' && window.location.origin) {
+        const resolved = new URL(sanitized, window.location.origin)
+        return resolved.toString().replace(/\/$/, '')
+      }
+    } catch {
+      // Fall through to returning sanitized value
+    }
+    return sanitized
+  }
 }
 
 async function requestJson<T>(path: string, init: RequestInit = {}, includeAuth = false): Promise<T> {
@@ -397,13 +415,10 @@ function normalizeId(value: string): string {
   return value.toLowerCase().replace(/\s+/g, '-')
 }
 
-<<<<<<< HEAD
-=======
 function normalizeHandleMatch(value: string): string {
   return value.trim().replace(/^@/, '').toLowerCase()
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function slugifyDisplayName(value: string): string {
   const base = value
     .trim()
@@ -473,44 +488,16 @@ function persistUploads() {
 function ensureFollowingHydrated() {
   if (followedHydrated || typeof window === 'undefined') return
   followedHydrated = true
-<<<<<<< HEAD
-  if (getStoredAuthToken()) {
-=======
   if (hasAuthSession()) {
->>>>>>> 8a33d6a (UI Changes)
     followedIds = new Set()
     void refreshFollowingFromServer(true)
     return
   }
-<<<<<<< HEAD
-  const raw = window.localStorage.getItem(FOLLOWING_STORAGE_KEY)
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as string[]
-      followedIds = new Set(parsed.map(normalizeId))
-      return
-    } catch {
-      // ignore and fall back to defaults
-    }
-  }
-  followedIds = new Set(GUEST_FOLLOW_DEFAULTS)
-  window.localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify([...followedIds]))
-}
-
-function persistFollowing() {
-  if (typeof window === 'undefined' || getStoredAuthToken()) return
-  window.localStorage.setItem(FOLLOWING_STORAGE_KEY, JSON.stringify([...followedIds]))
-}
-
-function refreshFollowingFromServer(force = false): Promise<void> | undefined {
-  if (!getStoredAuthToken()) {
-=======
   followedIds = new Set()
 }
 
 function refreshFollowingFromServer(force = false): Promise<void> | undefined {
   if (!hasAuthSession()) {
->>>>>>> 8a33d6a (UI Changes)
     return undefined
   }
   if (followingFetchPromise && !force) {
@@ -539,13 +526,10 @@ function getFollowedIds(): Set<string> {
 function ensureBookmarksHydrated() {
   if (bookmarksHydrated || typeof window === 'undefined') return
   bookmarksHydrated = true
-<<<<<<< HEAD
-=======
   if (!hasAuthSession()) {
     bookmarkedIds = new Set()
     return
   }
->>>>>>> 8a33d6a (UI Changes)
   const raw = window.localStorage.getItem(BOOKMARK_STORAGE_KEY)
   if (raw) {
     try {
@@ -558,33 +542,18 @@ function ensureBookmarksHydrated() {
       bookmarkedIds = new Set()
     }
   }
-<<<<<<< HEAD
-  if (!bookmarkedIds.size) {
-    bookmarkedIds = new Set(DEFAULT_SAVED_IDS)
-    window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify([...bookmarkedIds]))
-    notify()
-  }
-}
-
-function persistBookmarks() {
-  if (typeof window === 'undefined') return
-=======
   bookmarkedIds = new Set()
 }
 
 function persistBookmarks() {
   if (typeof window === 'undefined' || !hasAuthSession()) return
->>>>>>> 8a33d6a (UI Changes)
   window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify([...bookmarkedIds]))
 }
 
 function getSavedIds(): Set<string> {
-<<<<<<< HEAD
-=======
   if (!hasAuthSession()) {
     return new Set()
   }
->>>>>>> 8a33d6a (UI Changes)
   ensureBookmarksHydrated()
   return bookmarkedIds
 }
@@ -675,10 +644,6 @@ function signOutToGuest(): ActiveProfile {
     window.localStorage.removeItem(ACTIVE_USER_EMAIL_KEY)
     window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
     window.localStorage.removeItem(AUTH_TOKEN_KEY)
-<<<<<<< HEAD
-    window.localStorage.removeItem(FOLLOWING_STORAGE_KEY)
-=======
->>>>>>> 8a33d6a (UI Changes)
   }
   followedIds = new Set()
   followedHydrated = false
@@ -830,6 +795,30 @@ async function resendVerification(email: string): Promise<void> {
   await postJson<{ message: string }>('/api/auth/resend-verification', { email: trimmedEmail })
 }
 
+async function requestPasswordReset(email: string): Promise<void> {
+  const trimmedEmail = email.trim().toLowerCase()
+  if (!trimmedEmail) {
+    throw new Error('Enter your email')
+  }
+  await postJson<{ message: string }>('/api/auth/forgot-password', { email: trimmedEmail })
+}
+
+async function resetPassword(token: string, password: string): Promise<ActiveProfile> {
+  const trimmedToken = token.trim()
+  const trimmedPassword = password.trim()
+  if (!trimmedToken) {
+    throw new Error('Reset link is missing or invalid.')
+  }
+  if (trimmedPassword.length < 6) {
+    throw new Error('Password must be at least 6 characters')
+  }
+  const payload = await postJson<{ user: ApiUser; token: string; message: string }>('/api/auth/reset-password', {
+    token: trimmedToken,
+    password: trimmedPassword,
+  })
+  return applyApiUserSession(payload.user, payload.token)
+}
+
 async function matchContactsByEmail(emails: string[]): Promise<ContactMatch[]> {
   const normalized = emails
     .map((value) => value.trim().toLowerCase())
@@ -842,8 +831,6 @@ async function matchContactsByEmail(emails: string[]): Promise<ContactMatch[]> {
   return payload.matches
 }
 
-<<<<<<< HEAD
-=======
 async function fetchConnectionSuggestions(limit = 4): Promise<SuggestedConnection[]> {
   if (API_BASE_URL && getStoredAuthToken()) {
     try {
@@ -933,7 +920,6 @@ function buildLocalSuggestions(limit: number): SuggestedConnection[] {
   return suggestions
 }
 
->>>>>>> 8a33d6a (UI Changes)
 async function hashEmailForMatch(value: string): Promise<string> {
   const normalized = value.trim().toLowerCase()
   if (!normalized) {
@@ -950,8 +936,6 @@ async function hashEmailForMatch(value: string): Promise<string> {
   return hashPassword(normalized, normalized)
 }
 
-<<<<<<< HEAD
-=======
 async function fetchMessageThreads(): Promise<MessageThread[]> {
   const payload = await getJson<{ threads: ApiThreadSummary[] }>('/api/messages/threads', true)
   return payload.threads.map(mapApiThread)
@@ -1003,7 +987,6 @@ function normalizeHandleForApi(value: string): string {
   return value.trim().replace(/^@/, '').toLowerCase()
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function mapApiVideo(video: ApiFeedVideo): Video {
   const likeCount = video.stats?.likes ?? 0
   return {
@@ -1011,15 +994,10 @@ function mapApiVideo(video: ApiFeedVideo): Video {
     title: video.title,
     description: video.description ?? '',
     user: {
-<<<<<<< HEAD
-      id: video.user.id,
-      name: video.user.name || video.user.handle,
-=======
       id: video.user.handle || video.user.id,
       handle: video.user.handle ?? undefined,
       accountId: video.user.id,
       name: video.user.name || video.user.handle || video.user.id,
->>>>>>> 8a33d6a (UI Changes)
       churchHome: video.user.church ?? undefined,
       avatar: video.user.photoUrl ?? undefined,
     },
@@ -1038,8 +1016,6 @@ function mapApiVideo(video: ApiFeedVideo): Video {
   }
 }
 
-<<<<<<< HEAD
-=======
 function mapApiThreadMessage(message: ApiThreadMessage): ThreadMessage {
   return {
     id: message.id,
@@ -1075,7 +1051,6 @@ function mapApiThread(thread: ApiThreadSummary): MessageThread {
   }
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function ensureLibraryHydrated() {
   ensureUploadsHydrated()
 }
@@ -1089,8 +1064,6 @@ function notify() {
   listeners.forEach((listener) => listener())
 }
 
-<<<<<<< HEAD
-=======
 function sortByPublishedAt(videos: Video[]): Video[] {
   return videos
     .slice()
@@ -1116,7 +1089,6 @@ function mergeRemoteFeed(videos: Video[], options: { silent?: boolean } = {}) {
   }
 }
 
->>>>>>> 8a33d6a (UI Changes)
 function persistIfUpload(clipId: string) {
   if (uploads.find((item) => item.id === clipId)) {
     persistUploads()
@@ -1143,8 +1115,6 @@ function sortForFeed(clips: Video[]): Video[] {
 
 export const contentService = {
   matchContactsByEmail,
-<<<<<<< HEAD
-=======
   fetchConnectionSuggestions,
   fetchMessageThreads,
   fetchThreadMessages,
@@ -1153,17 +1123,13 @@ export const contentService = {
     const list = Array.isArray(handles) ? handles : [handles]
     return startConversationWithHandles(list, message, subject)
   },
->>>>>>> 8a33d6a (UI Changes)
   subscribe(listener: Listener) {
     listeners.add(listener)
     return () => listeners.delete(listener)
   },
-<<<<<<< HEAD
-=======
   isAuthenticated() {
     return hasAuthSession()
   },
->>>>>>> 8a33d6a (UI Changes)
   getActiveProfile,
   updateActiveProfile,
   completeSignup,
@@ -1171,6 +1137,8 @@ export const contentService = {
   signInWithCredentials,
   verifyEmailCode,
   resendVerification,
+  requestPasswordReset,
+  resetPassword,
   signIn(displayName: string) {
     return signInWithDisplayName(displayName)
   },
@@ -1186,23 +1154,6 @@ export const contentService = {
     if (!normalized) {
       return false
     }
-<<<<<<< HEAD
-    if (getStoredAuthToken()) {
-      await postJson(`/api/follows/${encodeURIComponent(normalized)}`, {}, true)
-      followedIds.add(normalized)
-      notify()
-      return true
-    }
-    return simulateNetwork(() => {
-      ensureFollowingHydrated()
-      if (!followedIds.has(normalized)) {
-        followedIds.add(normalized)
-        persistFollowing()
-        notify()
-      }
-      return true
-    })
-=======
     if (!hasAuthSession()) {
       throw new Error('Sign in to follow creators on Vessel.')
     }
@@ -1211,34 +1162,12 @@ export const contentService = {
     followedIds.add(normalized)
     notify()
     return true
->>>>>>> 8a33d6a (UI Changes)
   },
   async unfollowUser(userId: string) {
     const normalized = normalizeId(userId.replace(/^@/, ''))
     if (!normalized) {
       return false
     }
-<<<<<<< HEAD
-    if (getStoredAuthToken()) {
-      await deleteJson(`/api/follows/${encodeURIComponent(normalized)}`, true)
-      if (followedIds.has(normalized)) {
-        followedIds.delete(normalized)
-        notify()
-      }
-      return false
-    }
-    return simulateNetwork(() => {
-      ensureFollowingHydrated()
-      if (followedIds.has(normalized)) {
-        followedIds.delete(normalized)
-        persistFollowing()
-        notify()
-      }
-      return false
-    })
-  },
-  isFollowing(userId: string) {
-=======
     if (!hasAuthSession()) {
       throw new Error('Sign in to manage who you follow.')
     }
@@ -1254,7 +1183,6 @@ export const contentService = {
     if (!hasAuthSession()) {
       return false
     }
->>>>>>> 8a33d6a (UI Changes)
     ensureFollowingHydrated()
     return followedIds.has(normalizeId(userId))
   },
@@ -1266,11 +1194,6 @@ export const contentService = {
     return this.followUser(userId).then(() => true)
   },
   listFollowingIds(): string[] {
-<<<<<<< HEAD
-    return [...getFollowedIds()]
-  },
-  isBookmarked(clipId: string) {
-=======
     if (!hasAuthSession()) {
       return []
     }
@@ -1280,7 +1203,6 @@ export const contentService = {
     if (!hasAuthSession()) {
       return false
     }
->>>>>>> 8a33d6a (UI Changes)
     ensureBookmarksHydrated()
     return bookmarkedIds.has(clipId)
   },
@@ -1288,23 +1210,17 @@ export const contentService = {
     return [...getSavedIds()]
   },
   getSavedClips(): Video[] {
-<<<<<<< HEAD
-=======
     if (!hasAuthSession()) {
       return []
     }
->>>>>>> 8a33d6a (UI Changes)
     const savedIds = getSavedIds()
     if (!savedIds.size) return []
     return getLibrary().filter((clip) => savedIds.has(clip.id))
   },
   toggleBookmark(clipId: string) {
-<<<<<<< HEAD
-=======
     if (!hasAuthSession()) {
       throw new Error('Sign in to save videos for later.')
     }
->>>>>>> 8a33d6a (UI Changes)
     ensureBookmarksHydrated()
     const clip = getLibrary().find((item) => item.id === clipId)
     if (bookmarkedIds.has(clipId)) {
@@ -1328,22 +1244,14 @@ export const contentService = {
   async fetchForYouFeed(): Promise<Video[]> {
     const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/for-you')
     const mapped = payload.videos.map(mapApiVideo)
-<<<<<<< HEAD
-    remoteFeed = mapped
-=======
     replaceRemoteFeed(mapped, { silent: true })
->>>>>>> 8a33d6a (UI Changes)
     return mapped
   },
   async fetchFollowingFeed(): Promise<Video[]> {
     try {
       const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/following', true)
       const mapped = payload.videos.map(mapApiVideo)
-<<<<<<< HEAD
-      remoteFeed = mapped
-=======
       replaceRemoteFeed(mapped, { silent: true })
->>>>>>> 8a33d6a (UI Changes)
       return mapped
     } catch (error) {
       if ((error as any)?.status === 401) {
@@ -1352,8 +1260,6 @@ export const contentService = {
       throw error
     }
   },
-<<<<<<< HEAD
-=======
   async fetchMyUploads(): Promise<Video[]> {
     const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/mine', true)
     const mapped = payload.videos.map(mapApiVideo)
@@ -1370,7 +1276,6 @@ export const contentService = {
     mergeRemoteFeed(mapped, { silent: true })
     return mapped
   },
->>>>>>> 8a33d6a (UI Changes)
   async fetchCollectionFeed(collection: ContentCollection): Promise<Video[]> {
     const curated = filterFaithCentric(getLibrary().filter((clip) => clip.collection === collection))
     return sortForFeed(curated)
@@ -1425,12 +1330,7 @@ export const contentService = {
       true
     )
     const clip = mapApiVideo(payload.video)
-<<<<<<< HEAD
-    remoteFeed = [clip, ...remoteFeed.filter((video) => video.id !== clip.id)]
-    notify()
-=======
     mergeRemoteFeed([clip])
->>>>>>> 8a33d6a (UI Changes)
     return clip
   },
   async recordLike(clipId: string) {
@@ -1479,13 +1379,6 @@ export const contentService = {
     notify()
   },
   getClipsByAuthor(authorId: string): Video[] {
-<<<<<<< HEAD
-    const normalizedTarget = normalizeId(authorId.startsWith('@') ? authorId.slice(1) : authorId)
-    return getLibrary().filter((clip) => {
-      const clipId = normalizeId(clip.user.id || '')
-      const normalizedName = normalizeId(clip.user.name)
-      return clipId === normalizedTarget || normalizedName === normalizedTarget
-=======
     const trimmed = authorId.trim()
     const withoutAt = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed
     const targetHandle = normalizeHandleMatch(withoutAt)
@@ -1503,7 +1396,6 @@ export const contentService = {
         return true
       }
       return clipId === slugTarget || clipAccountId === slugTarget || normalizedName === slugTarget
->>>>>>> 8a33d6a (UI Changes)
     })
   },
   getLikedFeedFor(userId: string): Video[] {
@@ -1517,9 +1409,6 @@ export const contentService = {
   },
 }
 
-<<<<<<< HEAD
-export type { Video, ContentCategory, ContentCollection, ActiveProfile }
-=======
 export type {
   Video,
   ContentCategory,
@@ -1530,4 +1419,3 @@ export type {
   MessageThread,
   ThreadMessage,
 }
->>>>>>> 8a33d6a (UI Changes)

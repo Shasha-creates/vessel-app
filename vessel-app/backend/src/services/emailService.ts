@@ -9,6 +9,10 @@ type EmailPayload = {
 
 let transporter: nodemailer.Transporter | null = null
 
+function getAppBaseUrl(): string {
+  return process.env.APP_BASE_URL?.trim() || 'http://localhost:5173'
+}
+
 function getTransporter(): nodemailer.Transporter | null {
   if (transporter !== null) {
     return transporter
@@ -61,8 +65,8 @@ export async function sendEmail(payload: EmailPayload): Promise<void> {
 export function buildVerificationEmail(recipient: string, verificationCode: string) {
   const html = `
     <div style="font-family: Arial, sans-serif; padding: 24px;">
-      <h2>Confirm your Godlyme account</h2>
-      <p>Thanks for joining Godlyme! Enter the verification code below to finish creating your account.</p>
+      <h2>Confirm your Vessel account</h2>
+      <p>Thanks for joining Vessel! Enter the verification code below to finish creating your account.</p>
       <p style="margin: 32px 0; font-size: 32px; letter-spacing: 8px; font-weight: bold;">
         ${verificationCode}
       </p>
@@ -72,8 +76,30 @@ export function buildVerificationEmail(recipient: string, verificationCode: stri
 
   return {
     to: recipient,
-    subject: 'Verify your Godlyme email',
+    subject: 'Verify your Vessel email',
     html,
-    text: `Your Godlyme verification code is ${verificationCode}.`,
+    text: `Your Vessel verification code is ${verificationCode}.`,
+  }
+}
+
+export function buildPasswordResetEmail(recipient: string, token: string) {
+  const resetUrl = `${getAppBaseUrl().replace(/\/$/, '')}/reset-password?token=${encodeURIComponent(token)}`
+  const html = `
+    <div style="font-family: Arial, sans-serif; padding: 24px;">
+      <h2>Reset your Vessel password</h2>
+      <p>We received a request to reset the password for your account. Click the button below or paste the link into your browser.</p>
+      <p style="margin: 24px 0;">
+        <a href="${resetUrl}" style="background:#1d4ed8;color:#fff;padding:12px 18px;border-radius:6px;text-decoration:none;font-weight:bold;">Create a new password</a>
+      </p>
+      <p style="font-size:14px;color:#444;">If you didn’t request this, you can ignore this email. The link expires in 15 minutes.</p>
+      <p style="font-size:12px;color:#888;">Reset link: ${resetUrl}</p>
+    </div>
+  `
+
+  return {
+    to: recipient,
+    subject: 'Reset your Vessel password',
+    html,
+    text: `Reset your Vessel password by visiting: ${resetUrl}`,
   }
 }

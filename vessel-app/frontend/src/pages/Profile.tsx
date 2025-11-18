@@ -46,11 +46,8 @@ export default function Profile() {
   const normalizedTargetId = normalize(targetId)
   const normalizedActiveId = normalize(activeProfile.id)
   const isSelf = normalizedTargetId === normalizedActiveId && normalizedTargetId.length > 0
-<<<<<<< HEAD
-=======
   const isAuthenticated = contentService.isAuthenticated()
   const isGuest = isSelf && !isAuthenticated
->>>>>>> 8a33d6a (UI Changes)
 
   const displayName = isSelf
     ? activeProfile.name || "Guest Creator"
@@ -81,8 +78,6 @@ export default function Profile() {
   }, [targetId, isSelf])
 
   React.useEffect(() => {
-<<<<<<< HEAD
-=======
     let cancelled = false
     async function loadProfileVideos() {
       if (!targetId) {
@@ -110,7 +105,6 @@ export default function Profile() {
   }, [targetId, isSelf])
 
   React.useEffect(() => {
->>>>>>> 8a33d6a (UI Changes)
     if (!followTargetId) return
     setIsFollowing(contentService.isFollowing(followTargetId))
   }, [followTargetId])
@@ -118,15 +112,12 @@ export default function Profile() {
   React.useEffect(() => {
     setFollowBusy(false)
   }, [followTargetId])
-<<<<<<< HEAD
-=======
   React.useEffect(() => {
     if (isGuest) {
       setShowFollowersList(false)
       setShowFollowingList(false)
     }
   }, [isGuest])
->>>>>>> 8a33d6a (UI Changes)
 
   if (!targetId) {
     return <div className={styles.placeholder}>Creator not found.</div>
@@ -134,14 +125,8 @@ export default function Profile() {
 
   const totalLikes = clips.reduce((acc, clip) => acc + clip.likes, 0)
   const savedCount = savedClips.length
-<<<<<<< HEAD
-  const followerEstimate = Math.max(120, likedClips.length ? likedClips.length * 120 : totalLikes / 18)
-  const baseFollowing = contentService.listFollowingIds()
-  const isGuest = isSelf && normalize(activeProfile.name || "").includes("guest")
-=======
   const followerEstimate = isSelf && !isAuthenticated ? 0 : Math.max(120, likedClips.length ? likedClips.length * 120 : totalLikes / 18)
   const baseFollowing = contentService.listFollowingIds()
->>>>>>> 8a33d6a (UI Changes)
   const church = isSelf ? activeProfile.church : heroClip?.user.churchHome || ""
   const avatarPhoto = isSelf ? activeProfile.photo : undefined
   const avatarLetter = displayName.slice(0, 1).toUpperCase()
@@ -149,21 +134,6 @@ export default function Profile() {
   const ensureHandle = React.useCallback((value: string) => (value.startsWith("@") ? value : `@${value}`), [])
 
   const followingHandles = React.useMemo(() => {
-<<<<<<< HEAD
-    if (baseFollowing.length) return baseFollowing.map(ensureHandle)
-    return Array.from({ length: 6 }, (_, i) => ensureHandle(`friend_${i + 1}`))
-  }, [baseFollowing, ensureHandle])
-
-  const followersHandles = React.useMemo(() => {
-    const count = Math.min(20, Math.max(5, Math.round(followerEstimate / 250) + 5))
-    return Array.from({ length: count }, (_, i) => ensureHandle(`supporter_${i + 1}`))
-  }, [ensureHandle, followerEstimate])
-
-  const gridSource = tab === "videos" ? clips : tab === "liked" ? likedClips : savedClips
-
-  const handleFollowToggle = React.useCallback(async () => {
-    if (!followTargetId || followBusy) return
-=======
     if (isGuest) return []
     if (baseFollowing.length) return baseFollowing.map(ensureHandle)
     return Array.from({ length: 6 }, (_, i) => ensureHandle(`friend_${i + 1}`))
@@ -185,7 +155,6 @@ export default function Profile() {
       window.alert('Sign in to follow creators on Vessel.')
       return
     }
->>>>>>> 8a33d6a (UI Changes)
     setFollowBusy(true)
     try {
       if (isFollowing) {
@@ -248,10 +217,6 @@ export default function Profile() {
           {church ? <p className={styles.church}>{church}</p> : null}
         </div>
         <div className={styles.statsRow}>
-<<<<<<< HEAD
-          <Stat label="Following" value={followingHandles.length.toLocaleString()} onClick={() => setShowFollowingList(true)} />
-          <Stat label="Followers" value={Math.round(followerEstimate).toLocaleString()} onClick={() => setShowFollowersList(true)} />
-=======
           <Stat
             label="Following"
             value={followingCount.toLocaleString()}
@@ -264,7 +229,6 @@ export default function Profile() {
             onClick={isGuest ? undefined : () => setShowFollowersList(true)}
             disabled={isGuest}
           />
->>>>>>> 8a33d6a (UI Changes)
           <Stat label="Likes" value={formatLikes(totalLikes)} />
           {isSelf ? <Stat label="Saved" value={savedCount.toLocaleString()} /> : null}
         </div>
@@ -382,28 +346,16 @@ export default function Profile() {
         </div>
       </section>
 
-<<<<<<< HEAD
-      {showFollowingList ? (
-        <Overlay title="Following" handles={followingHandles} onClose={() => setShowFollowingList(false)} />
-      ) : null}
-      {showFollowersList ? (
-=======
       {showFollowingList && !isGuest ? (
         <Overlay title="Following" handles={followingHandles} onClose={() => setShowFollowingList(false)} />
       ) : null}
       {showFollowersList && !isGuest ? (
->>>>>>> 8a33d6a (UI Changes)
         <Overlay title="Followers" handles={followersHandles} onClose={() => setShowFollowersList(false)} />
       ) : null}
     </div>
   )
 }
 
-<<<<<<< HEAD
-function Stat({ label, value, onClick }: { label: string; value: string; onClick?: () => void }) {
-  return (
-    <button type="button" className={styles.stat} onClick={onClick}>
-=======
 function Stat({
   label,
   value,
@@ -417,7 +369,6 @@ function Stat({
 }) {
   return (
     <button type="button" className={styles.stat} onClick={onClick} disabled={disabled}>
->>>>>>> 8a33d6a (UI Changes)
       <span className={styles.statValue}>{value}</span>
       <span className={styles.statLabel}>{label}</span>
     </button>
@@ -449,8 +400,3 @@ function Overlay({ title, handles, onClose }: OverlayProps) {
     </div>
   )
 }
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 8a33d6a (UI Changes)

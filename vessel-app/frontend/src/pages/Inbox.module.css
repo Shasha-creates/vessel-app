@@ -53,8 +53,6 @@
   gap: 1rem;
 }
 
-<<<<<<< HEAD
-=======
 .notificationCard {
   display: flex;
   align-items: center;
@@ -103,7 +101,6 @@
   font-weight: 500;
 }
 
->>>>>>> 8a33d6a (UI Changes)
 .item {
   display: flex;
   gap: 1rem;
@@ -403,8 +400,6 @@
   font-size: 0.8rem;
 }
 
-<<<<<<< HEAD
-=======
 .contactActions {
   margin-top: 0.5rem;
 }
@@ -570,7 +565,6 @@
   cursor: pointer;
 }
 
->>>>>>> 8a33d6a (UI Changes)
 @media (max-width: 600px) {
   .inbox {
     padding: 2rem 1rem calc(var(--bottom-nav-height) + 2.5rem);
@@ -596,8 +590,6 @@
   .composer button {
     width: 100%;
   }
-<<<<<<< HEAD
-=======
 
   .suggestionCard {
     flex-direction: column;
@@ -619,5 +611,4 @@
   .suggestionActionsCompact button:last-child {
     margin-left: auto;
   }
->>>>>>> 8a33d6a (UI Changes)
 }

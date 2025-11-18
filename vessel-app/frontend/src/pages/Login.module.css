@@ -49,6 +49,11 @@
   font-weight: 600;
 }
 
+.success {
+  color: #78e0a0;
+  font-weight: 600;
+}
+
 .actions {
   display: flex;
   gap: 0.75rem;
@@ -76,4 +81,34 @@
 .actions button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.supportLinks {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+}
+
+.supportLinks a {
+  color: var(--accent-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.supportLinks a:hover {
+  text-decoration: underline;
+}
+
+.secondaryLink {
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  padding: 0.7rem 1.4rem;
+  text-decoration: none;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  background: var(--surface-base);
 }

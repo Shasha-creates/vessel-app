@@ -730,6 +730,12 @@
   font-weight: 600;
 }
 
+.authSuccess {
+  color: #70f0b6;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .authForm input::placeholder,
 .authHandleRow input::placeholder {
   color: var(--text-muted);

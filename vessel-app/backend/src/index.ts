@@ -9,18 +9,12 @@ import contactsRouter from './routes/contacts'
 import followRouter from './routes/follow'
 import videoEngagementRouter from './routes/videoEngagement'
 import feedRouter from './routes/feed'
-<<<<<<< HEAD
-=======
 import messagesRouter from './routes/messages'
->>>>>>> 8a33d6a (UI Changes)
 import { ensureUsersTable } from './services/userService'
 import { ensureFollowPrereqs } from './services/followService'
 import { ensureVideoEngagementTables } from './services/videoEngagementService'
 import { ensureVideoFeedTables } from './services/videoFeedService'
-<<<<<<< HEAD
-=======
 import { ensureMessagingTables } from './services/messagingService'
->>>>>>> 8a33d6a (UI Changes)
 
 const app = express()
 app.use(cors())
@@ -70,10 +64,7 @@ app.use('/api/contacts', contactsRouter)
 app.use('/api/follows', followRouter)
 app.use('/api/feed', feedRouter)
 app.use('/api/videos', videoEngagementRouter)
-<<<<<<< HEAD
-=======
 app.use('/api/messages', messagesRouter)
->>>>>>> 8a33d6a (UI Changes)
 
 async function start() {
   let port: number
@@ -85,10 +76,7 @@ async function start() {
     await ensureFollowPrereqs()
     await ensureVideoEngagementTables()
     await ensureVideoFeedTables()
-<<<<<<< HEAD
-=======
     await ensureMessagingTables()
->>>>>>> 8a33d6a (UI Changes)
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to connect to external services'
     // eslint-disable-next-line no-console

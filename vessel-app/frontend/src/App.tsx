@@ -7,6 +7,9 @@ import Profile from "./pages/Profile"
 import Login from "./pages/Login"
 import Home from "./pages/Home"
 import Signup from "./pages/Signup"
+import VerifyEmail from "./pages/VerifyEmail"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 import Settings from "./pages/Settings"
 import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
@@ -28,6 +31,9 @@ export default function App() {
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Routes>
       </main>
 

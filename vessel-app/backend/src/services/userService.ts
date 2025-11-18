@@ -18,6 +18,8 @@ export type DbUser = {
   verification_token: string | null
   verification_token_expires: Date | null
   email_hash: string | null
+  reset_token: string | null
+  reset_token_expires: Date | null
   created_at: Date
   updated_at: Date
 }
@@ -36,6 +38,8 @@ export function mapRow(row: any): DbUser {
     verification_token: row.verification_token,
     verification_token_expires: row.verification_token_expires,
     email_hash: row.email_hash,
+    reset_token: row.reset_token,
+    reset_token_expires: row.reset_token_expires,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
@@ -43,6 +47,10 @@ export function mapRow(row: any): DbUser {
 
 function generateVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
+}
+
+function generateResetToken(): string {
+  return crypto.randomBytes(32).toString('hex')
 }
 
 export function hashContactIdentifier(value: string): string {
@@ -64,16 +72,20 @@ export async function ensureUsersTable(): Promise<void> {
       verification_token TEXT,
       verification_token_expires TIMESTAMPTZ,
       email_hash TEXT,
+      reset_token TEXT,
+      reset_token_expires TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `)
   await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email_hash TEXT;')
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token TEXT;')
+  await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;')
   await backfillEmailHashes()
 }
 
 async function backfillEmailHashes(): Promise<void> {
-  const result = await pool.query('SELECT id, email FROM users WHERE email_hash IS NULL')
+  const result = await pool.query<{ id: string; email: string }>('SELECT id, email FROM users WHERE email_hash IS NULL')
   if (!result.rowCount) {
     return
   }
@@ -198,6 +210,50 @@ export async function matchUsersByEmailHashes(hashes: string[]): Promise<DbUser[
   }
   const result = await pool.query('SELECT * FROM users WHERE email_hash = ANY($1)', [unique])
   return result.rows.map(mapRow)
+}
+
+export async function createPasswordResetToken(email: string): Promise<DbUser | null> {
+  const normalizedEmail = email.trim().toLowerCase()
+  if (!normalizedEmail) {
+    return null
+  }
+  const token = generateResetToken()
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 15)
+  const result = await pool.query(
+    `
+      UPDATE users
+      SET reset_token = $1,
+          reset_token_expires = $2,
+          updated_at = NOW()
+      WHERE email = $3
+      RETURNING *
+    `,
+    [token, expiresAt, normalizedEmail]
+  )
+  return result.rows[0] ? mapRow(result.rows[0]) : null
+}
+
+export async function resetPasswordWithToken(token: string, newPassword: string): Promise<DbUser | null> {
+  const trimmedToken = token.trim()
+  if (!trimmedToken) {
+    return null
+  }
+  const passwordHash = await bcrypt.hash(newPassword.trim(), 10)
+  const result = await pool.query(
+    `
+      UPDATE users
+      SET password_hash = $1,
+          reset_token = NULL,
+          reset_token_expires = NULL,
+          updated_at = NOW()
+      WHERE reset_token = $2
+        AND reset_token_expires IS NOT NULL
+        AND reset_token_expires > NOW()
+      RETURNING *
+    `,
+    [passwordHash, trimmedToken]
+  )
+  return result.rows[0] ? mapRow(result.rows[0]) : null
 }
 
 export function presentUser(user: DbUser) {

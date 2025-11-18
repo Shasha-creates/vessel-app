@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { contentService } from "../services/contentService"
 import styles from "./Login.module.css"
 
@@ -81,6 +81,10 @@ export default function Login() {
           </button>
         </div>
       </form>
+      <div className={styles.supportLinks}>
+        <Link to="/forgot-password">Forgot password?</Link>
+        <Link to="/signup">Need an account?</Link>
+      </div>
     </div>
   )
 }
