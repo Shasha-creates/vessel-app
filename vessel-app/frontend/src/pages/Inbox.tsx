@@ -1,4 +1,5 @@
 import React from 'react'
+import { useSearchParams } from 'react-router-dom'
 import styles from './Inbox.module.css'
 import { AuthOverlay, type AuthMode } from './Settings'
 import {
@@ -19,6 +20,7 @@ type SuggestedCard = SuggestedConnection & {
 const quickReplyOptions = ['Thanks so much!', "Let's schedule something.", 'Appreciate you sharing this.', 'Praying with you!']
 
 export default function Inbox() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [activeProfile, setActiveProfile] = React.useState(() => contentService.getActiveProfile())
   const selfHandle = normalizeHandle(activeProfile.id || '')
   const [tab, setTab] = React.useState<TabKey>('notifications')
@@ -40,6 +42,11 @@ export default function Inbox() {
   const [notifications, setNotifications] = React.useState<NotificationSummary[]>([])
   const [notificationsLoading, setNotificationsLoading] = React.useState(false)
   const [notificationsError, setNotificationsError] = React.useState<string | null>(null)
+  const [composeVisible, setComposeVisible] = React.useState(false)
+  const [composeHandle, setComposeHandle] = React.useState('')
+  const [composeDraft, setComposeDraft] = React.useState('')
+  const [composeBusy, setComposeBusy] = React.useState(false)
+  const [composeError, setComposeError] = React.useState<string | null>(null)
   const isAuthenticated = contentService.isAuthenticated()
 
   React.useEffect(() => {
@@ -75,6 +82,27 @@ export default function Inbox() {
       cancelled = true
     }
   }, [])
+
+  const openComposer = React.useCallback(
+    (handle?: string) => {
+      setTab('messages')
+      setComposeVisible(true)
+      if (handle) {
+        setComposeHandle(handle.startsWith('@') ? handle : `@${handle}`)
+      }
+    },
+    []
+  )
+
+  React.useEffect(() => {
+    const composeHandleParam = searchParams.get('compose')
+    if (composeHandleParam) {
+      openComposer(composeHandleParam)
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('compose')
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [openComposer, searchParams, setSearchParams])
 
   React.useEffect(() => {
     let cancelled = false
@@ -247,6 +275,37 @@ export default function Inbox() {
     setSuggestions((current) => current.filter((item) => item.id !== id))
   }
 
+  async function startNewConversation(event: React.FormEvent) {
+    event.preventDefault()
+    const target = composeHandle.trim().replace(/^@/, '').toLowerCase()
+    const body = composeDraft.trim()
+    if (!target || !body) {
+      setComposeError('Enter a handle and your message before sending.')
+      return
+    }
+    setComposeBusy(true)
+    setComposeError(null)
+    try {
+      const thread = await contentService.startConversation(target, body)
+      setThreads((current) => {
+        const filtered = current.filter((item) => item.id !== thread.id)
+        return [thread, ...filtered].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )
+      })
+      setActiveConversationId(thread.id)
+      setComposeDraft('')
+      setComposeHandle('')
+      setComposeVisible(false)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'We could not start that conversation. Please try again.'
+      setComposeError(message)
+    } finally {
+      setComposeBusy(false)
+    }
+  }
+
   const handleAuthClose = React.useCallback(() => {
     setAuthMode(null)
   }, [])
@@ -325,8 +384,61 @@ export default function Inbox() {
       })
     }
   } else if (tab === 'messages') {
+    const composeSection = !isAuthenticated ? null : (
+      <div className={styles.composeLauncher}>
+        {composeVisible ? (
+          <form className={styles.composeForm} onSubmit={startNewConversation}>
+            <div className={styles.composeRow}>
+              <label>
+                To
+                <input
+                  value={composeHandle}
+                  onChange={(event) => setComposeHandle(event.target.value)}
+                  placeholder="@friend"
+                  disabled={composeBusy}
+                />
+              </label>
+              <button
+                type="button"
+                className={styles.dismissButton}
+                onClick={() => {
+                  setComposeVisible(false)
+                  setComposeDraft('')
+                  setComposeHandle('')
+                  setComposeError(null)
+                }}
+                aria-label="Close composer"
+              >
+                ×
+              </button>
+            </div>
+            <textarea
+              value={composeDraft}
+              onChange={(event) => setComposeDraft(event.target.value)}
+              placeholder="Type your message..."
+              rows={3}
+              disabled={composeBusy}
+            />
+            {composeError ? <p className={styles.composeError}>{composeError}</p> : null}
+            <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandle.trim()}>
+              {composeBusy ? 'Sending...' : 'Send'}
+            </button>
+          </form>
+        ) : (
+          <button type="button" className={styles.composeButton} onClick={() => openComposer()}>
+            New message
+          </button>
+        )}
+      </div>
+    )
+
     if (threadsLoading) {
-      tabContent = <div className={styles.status}>Loading conversations...</div>
+      tabContent = (
+        <>
+          {composeSection}
+          <div className={styles.status}>Loading conversations...</div>
+        </>
+      )
     } else if (threadsError) {
       const needsAuth = /sign in/i.test(threadsError)
       tabContent = (
@@ -341,14 +453,20 @@ export default function Inbox() {
       )
     } else if (!threads.length) {
       tabContent = (
-        <div className={styles.status}>
-          No messages yet. Visit Suggested to follow people you know and start the first conversation.
-        </div>
+        <>
+          {composeSection}
+          <div className={styles.status}>
+            No messages yet. Visit Suggested to follow people you know and start the first conversation.
+          </div>
+        </>
       )
     } else {
-      tabContent = threads.map((thread) => {
-        const isActive = thread.id === activeConversationId
-        const draftValue = drafts[thread.id] ?? ''
+      tabContent = (
+        <>
+          {composeSection}
+          {threads.map((thread) => {
+            const isActive = thread.id === activeConversationId
+            const draftValue = drafts[thread.id] ?? ''
         const title = pickThreadTitle(thread, selfHandle)
         const preview = thread.lastMessage?.body ?? 'Start the conversation.'
         const lastTimestamp = thread.lastMessage?.createdAt ?? thread.updatedAt
@@ -431,7 +549,9 @@ export default function Inbox() {
             ) : null}
           </article>
         )
-      })
+          })}
+        </>
+      )
     }
   } else {
     tabContent = (

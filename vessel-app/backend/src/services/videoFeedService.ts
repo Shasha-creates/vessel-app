@@ -38,7 +38,7 @@ type ListOptions = {
   videoId?: string
 }
 
-const DEFAULT_THUMBNAIL_URL = 'https://placehold.co/640x360?text=Vessel'
+export const DEFAULT_THUMBNAIL_URL = 'https://placehold.co/640x360?text=Vessel'
 
 export async function ensureVideoFeedTables(): Promise<void> {
   await pool.query(`
@@ -98,6 +98,11 @@ export async function listVideosByAuthors(authorIds: string[], options: ListOpti
 export async function getVideoById(id: string): Promise<FeedVideoRecord | null> {
   const videos = await queryVideos({ videoId: id, limit: 1 })
   return videos[0] ?? null
+}
+
+export async function deleteVideoRecord(videoId: string, ownerId: string): Promise<boolean> {
+  const result = await pool.query('DELETE FROM videos WHERE id = $1 AND user_id = $2 RETURNING 1', [videoId, ownerId])
+  return (result.rowCount ?? 0) > 0
 }
 
 type VideoQueryRow = {

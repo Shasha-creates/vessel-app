@@ -210,12 +210,7 @@ export default function Profile() {
   const selfFollowers = isSelf ? viewerFollowers : []
   const selfFollowing = isSelf ? viewerFollowing : []
   const targetHandle = heroClip?.user.handle || (targetId.startsWith('@') ? targetId.slice(1) : '')
-  const normalizedTargetHandle = targetHandle ? normalize(targetHandle) : ''
-  const targetFollowsViewer = Boolean(
-    normalizedTargetHandle &&
-      viewerFollowers.some((user) => user.handle && normalize(user.handle) === normalizedTargetHandle)
-  )
-  const canMessageTarget = Boolean(!isSelf && isAuthenticated && targetHandle && isFollowing && targetFollowsViewer)
+  const canMessageTarget = Boolean(!isSelf && isAuthenticated && targetHandle && isFollowing)
 
   const ensureHandle = React.useCallback((value: string) => (value.startsWith("@") ? value : `@${value}`), [])
 
@@ -261,10 +256,10 @@ export default function Profile() {
     return savedClips
   }, [tab, clips, likedClips, savedClips])
 
-  const followingCount =
-    followStats?.following ?? (isSelf ? followingEntries.length : isGuest ? 0 : followingHandles.length)
-  const followerCount =
-    followStats?.followers ?? (isSelf ? followersEntries.length : isGuest ? 0 : Math.round(followerEstimate))
+  const fallbackFollowingCount = isSelf ? followingEntries.length : 0
+  const fallbackFollowerCount = isSelf ? followersEntries.length : 0
+  const followingCount = followStats?.following ?? fallbackFollowingCount
+  const followerCount = followStats?.followers ?? fallbackFollowerCount
   const canShowFollowLists = isSelf && isAuthenticated
 
   const handleFollowToggle = React.useCallback(async () => {
@@ -299,11 +294,48 @@ export default function Profile() {
       return
     }
     if (!canMessageTarget) {
-      window.alert('Follow each other to start messaging on Godlyme.')
+      window.alert('Follow this creator to start messaging on Godlyme.')
       return
     }
     navigate(`/inbox?compose=${encodeURIComponent(targetHandle)}`)
   }, [canMessageTarget, navigate, targetHandle])
+
+  const handleGridKey = React.useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>, clipId: string) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        navigate(`/watch/${clipId}`)
+      }
+    },
+    [navigate]
+  )
+
+  const handleRemoveSavedClip = React.useCallback((clip: Video) => {
+    try {
+      contentService.toggleBookmark(clip.id)
+      setSavedClips((current) => current.filter((item) => item.id !== clip.id))
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to update saved videos right now.'
+      window.alert(message)
+    }
+  }, [])
+
+  const handleDeleteClip = React.useCallback(
+    async (clip: Video) => {
+      const confirmed = window.confirm(`Delete "${clip.title}" from Vessel?`)
+      if (!confirmed) return
+      try {
+        await contentService.deleteUpload(clip.id)
+        setClips((current) => current.filter((item) => item.id !== clip.id))
+        setSavedClips((current) => current.filter((item) => item.id !== clip.id))
+        setLikedClips((current) => current.filter((item) => item.id !== clip.id))
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to delete that video right now.'
+        window.alert(message)
+      }
+    },
+    []
+  )
 
   function copyProfileLink() {
     const shareId = targetId || activeProfile.id
@@ -404,7 +436,7 @@ export default function Profile() {
                 className={styles.actionButton}
                 onClick={handleMessageClick}
                 disabled={!canMessageTarget}
-                title={canMessageTarget ? 'Send a message' : 'Follow each other to start messaging'}
+                title={canMessageTarget ? 'Send a message' : 'Follow this creator to start messaging'}
               >
                 Message
               </button>
@@ -442,27 +474,62 @@ export default function Profile() {
             </button>
           ) : null}
         </div>
-        <div className={styles.gridContent}>
-          {gridSource.map((clip) => (
-            <button
-              key={`${tab}-${clip.id}`}
-              type="button"
-              className={styles.gridItem}
-              onClick={() => navigate(`/watch/${clip.id}`)}
-            >
-              <video
-                className={styles.gridVideo}
-                src={clip.videoUrl}
-                poster={clip.thumbnailUrl}
-                muted
-                loop
-                playsInline
-              />
-              <div className={styles.gridOverlay}>
-                <span>Likes: {formatLikes(clip.likes)}</span>
+        <div className={`${styles.gridContent} ${tab === 'videos' ? styles.gridContentVideos : ''}`}>
+          {gridSource.map((clip) => {
+            const allowDelete = isSelf && tab === 'videos'
+            const allowUnsave = isSelf && tab === 'saved'
+            return (
+              <div
+                key={`${tab}-${clip.id}`}
+                role="button"
+                tabIndex={0}
+                className={styles.gridItem}
+                onClick={() => navigate(`/watch/${clip.id}`)}
+                onKeyDown={(event) => handleGridKey(event, clip.id)}
+                aria-label={`Open ${clip.title}`}
+              >
+                <video
+                  className={styles.gridVideo}
+                  src={clip.videoUrl}
+                  poster={clip.thumbnailUrl}
+                  muted
+                  loop
+                  playsInline
+                />
+                <div className={styles.gridOverlay}>
+                  <span>Likes: {formatLikes(clip.likes)}</span>
+                </div>
+                {allowDelete || allowUnsave ? (
+                  <div className={styles.gridActions}>
+                    {allowDelete ? (
+                      <button
+                        type="button"
+                        className={styles.gridActionButton}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleDeleteClip(clip)
+                        }}
+                      >
+                        Delete
+                      </button>
+                    ) : null}
+                    {allowUnsave ? (
+                      <button
+                        type="button"
+                        className={styles.gridActionButton}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleRemoveSavedClip(clip)
+                        }}
+                      >
+                        Unsave
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
-            </button>
-          ))}
+            )
+          })}
           {tab === 'videos' && !clips.length ? (
             <div className={styles.emptyVideos}>
               <h3>No videos yet</h3>

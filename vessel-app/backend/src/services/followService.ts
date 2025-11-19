@@ -78,6 +78,19 @@ export async function listMutualFollows(userId: string): Promise<DbUser[]> {
   return result.rows.map((row) => mapRow(row))
 }
 
+export async function doesUserFollow(followerId: string, followeeId: string): Promise<boolean> {
+  const result = await pool.query(
+    `
+      SELECT 1
+      FROM user_follows
+      WHERE follower_id = $1 AND followee_id = $2
+      LIMIT 1
+    `,
+    [followerId, followeeId]
+  )
+  return (result.rowCount ?? 0) > 0
+}
+
 export async function isMutualFollow(userId: string, otherUserId: string): Promise<boolean> {
   const result = await pool.query(
     `

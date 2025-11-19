@@ -1,6 +1,6 @@
 import React from "react"
 import { formatLikes } from "../services/mockData"
-import type { Video } from "../services/contentService"
+import { type Video, THUMBNAIL_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
 import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon } from "./icons"
 
@@ -44,6 +44,10 @@ export default function VideoCard({
   const [muted, setMuted] = React.useState(false)
   const [expandDescription, setExpandDescription] = React.useState(false)
   const DESCRIPTION_PREVIEW_LIMIT = 20
+  const posterUrl = React.useMemo(
+    () => resolvePosterUrl(video.thumbnailUrl, video.videoUrl),
+    [video.thumbnailUrl, video.videoUrl]
+  )
   React.useEffect(() => {
     setExpandDescription(false)
   }, [video.id])
@@ -135,7 +139,7 @@ export default function VideoCard({
         ref={videoRef}
         className={styles.video}
         src={video.videoUrl}
-        poster={video.thumbnailUrl}
+        poster={posterUrl}
         autoPlay
         loop
         muted={muted || !isActive}
@@ -242,4 +246,26 @@ function formatCount(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
   if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, "")}K`
   return `${value}`
+}
+
+function resolvePosterUrl(thumbnailUrl?: string, videoUrl?: string) {
+  const candidate = (thumbnailUrl || "").trim()
+  if (candidate && !isVideoAsset(candidate)) {
+    return candidate
+  }
+  const fallback = (videoUrl || "").trim()
+  if (fallback && !isVideoAsset(fallback)) {
+    return fallback
+  }
+  return THUMBNAIL_PLACEHOLDER
+}
+
+function isVideoAsset(url: string) {
+  try {
+    const parsed = new URL(url, "https://placeholder.vessel")
+    const sanitized = parsed.pathname.split("?")[0] || ""
+    return /\.(mp4|mov|webm|m4v|avi|mkv)$/i.test(sanitized)
+  } catch {
+    return /\.(mp4|mov|webm|m4v|avi|mkv)$/i.test(url)
+  }
 }

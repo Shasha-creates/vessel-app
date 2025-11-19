@@ -254,6 +254,44 @@
   cursor: pointer;
 }
 
+.gridItem:focus-visible {
+  outline: 2px solid rgba(116, 241, 255, 0.7);
+  outline-offset: 3px;
+}
+
+.gridActions {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  z-index: 2;
+}
+
+.gridActionButton {
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.85rem;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.18s ease;
+}
+
+.gridActionButton:hover,
+.gridActionButton:focus-visible {
+  background: rgba(0, 0, 0, 0.85);
+  transform: translateY(-1px);
+}
+
+.gridActionButton:focus-visible {
+  outline: 2px solid rgba(116, 241, 255, 0.7);
+  outline-offset: 2px;
+}
+
 .settingsPanel {
   display: flex;
   flex-direction: column;

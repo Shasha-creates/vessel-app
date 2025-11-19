@@ -1,7 +1,6 @@
 import { Pool } from 'pg'
 import { getPgPool } from '../clients'
 import { DbUser, findUserByHandle, findUserById, mapRow, presentUser } from './userService'
-import { isMutualFollow } from './followService'
 
 const pool: Pool = getPgPool()
 
@@ -236,7 +235,6 @@ export async function createThreadWithMessage(
   if (!participants.length) {
     throw new Error('Select at least one recipient.')
   }
-  await requireMutualMessagingAccess(creatorId, participants)
   const uniqueParticipantIds = Array.from(new Set([creatorId, ...participants.map((user) => user.id)]))
   const client = await pool.connect()
   try {
@@ -244,7 +242,7 @@ export async function createThreadWithMessage(
     const threadResult = await client.query(
       `
         INSERT INTO message_threads (subject, created_by)
-        VALUES ($1, $2)
+        VALUES ($1, $2::uuid)
         RETURNING id
       `,
       [subject ?? null, creatorId]
@@ -255,19 +253,19 @@ export async function createThreadWithMessage(
         client.query(
           `
             INSERT INTO thread_participants (thread_id, user_id, joined_at, last_read_at)
-            VALUES ($1, $2, NOW(), CASE WHEN $2 = $3 THEN NOW() ELSE NULL END)
+            VALUES ($1::uuid, $2::uuid, NOW(), CASE WHEN $2::uuid = $3::uuid THEN NOW() ELSE NULL END)
             ON CONFLICT (thread_id, user_id) DO NOTHING
           `,
           [threadId, userId, creatorId]
         )
       )
     )
-    await client.query('INSERT INTO messages (thread_id, sender_id, body) VALUES ($1, $2, $3)', [
+    await client.query('INSERT INTO messages (thread_id, sender_id, body) VALUES ($1::uuid, $2::uuid, $3)', [
       threadId,
       creatorId,
       body,
     ])
-    await client.query('UPDATE message_threads SET updated_at = NOW() WHERE id = $1', [threadId])
+    await client.query('UPDATE message_threads SET updated_at = NOW() WHERE id = $1::uuid', [threadId])
     await client.query('COMMIT')
     const summary = await getThreadForUser(threadId, creatorId)
     if (!summary) {
@@ -287,21 +285,19 @@ export async function appendMessage(threadId: string, senderId: string, body: st
     throw httpError('Message body is required.', 400)
   }
   await ensureParticipant(threadId, senderId)
-  const threadRecipients = await listThreadParticipantsExcludingSender(threadId, senderId)
-  await requireMutualMessagingAccess(senderId, threadRecipients)
   const result = await pool.query(
     `
       INSERT INTO messages (thread_id, sender_id, body)
-      VALUES ($1, $2, $3)
+      VALUES ($1::uuid, $2::uuid, $3)
       RETURNING id, thread_id, body, created_at
     `,
     [threadId, senderId, body]
   )
-  await pool.query('UPDATE thread_participants SET last_read_at = NOW() WHERE thread_id = $1 AND user_id = $2', [
+  await pool.query('UPDATE thread_participants SET last_read_at = NOW() WHERE thread_id = $1::uuid AND user_id = $2::uuid', [
     threadId,
     senderId,
   ])
-  await pool.query('UPDATE message_threads SET updated_at = NOW() WHERE id = $1', [threadId])
+  await pool.query('UPDATE message_threads SET updated_at = NOW() WHERE id = $1::uuid', [threadId])
   const sender = await findUserById(senderId)
   if (!sender) {
     throw new Error('Sender not found.')
@@ -352,23 +348,6 @@ async function listThreadParticipantsExcludingSender(threadId: string, senderId:
     [threadId, senderId]
   )
   return result.rows.map((row) => mapRow(row))
-}
-
-async function requireMutualMessagingAccess(senderId: string, recipients: DbUser[]): Promise<void> {
-  if (!recipients.length) {
-    return
-  }
-  const statuses = await Promise.all(
-    recipients.map(async (recipient) => ({
-      recipient,
-      mutual: await isMutualFollow(senderId, recipient.id),
-    }))
-  )
-  const blockedHandles = statuses.filter((status) => !status.mutual).map((status) => `@${status.recipient.handle}`)
-  if (blockedHandles.length) {
-    const handleList = blockedHandles.join(', ')
-    throw httpError(`You can only message people who you follow and who follow you back. Remove ${handleList} to continue.`, 403)
-  }
 }
 
 async function hydrateThreadParticipants(userId: string, rows: any[]): Promise<ThreadSummary[]> {
