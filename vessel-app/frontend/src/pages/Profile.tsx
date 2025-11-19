@@ -92,7 +92,7 @@ export default function Profile() {
     ? { label: "Open profile settings", icon: "\u2699", onClick: () => openSettings() }
     : { label: "Copy profile link", icon: "\u2934", onClick: copyProfileLink }
 
-  React.useEffect(() => {
+  React.useEffect(() => { 
     if (!targetId) return
     const refresh = () => {
       setClips(contentService.getClipsByAuthor(targetId))

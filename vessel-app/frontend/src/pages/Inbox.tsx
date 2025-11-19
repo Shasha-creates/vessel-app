@@ -1,9 +1,5 @@
 import React from 'react'
-<<<<<<< HEAD
-import { useNavigate } from 'react-router-dom'
-=======
 import { useSearchParams } from 'react-router-dom'
->>>>>>> c51cacb59e1ea0ff2a05c5725ac90b7c9f5ec82c
 import styles from './Inbox.module.css'
 import { AuthOverlay, type AuthMode } from './Settings'
 import {
@@ -24,11 +20,7 @@ type SuggestedCard = SuggestedConnection & {
 const quickReplyOptions = ['Thanks so much!', "Let's schedule something.", 'Appreciate you sharing this.', 'Praying with you!']
 
 export default function Inbox() {
-<<<<<<< HEAD
-  const navigate = useNavigate()
-=======
   const [searchParams, setSearchParams] = useSearchParams()
->>>>>>> c51cacb59e1ea0ff2a05c5725ac90b7c9f5ec82c
   const [activeProfile, setActiveProfile] = React.useState(() => contentService.getActiveProfile())
   const selfHandle = normalizeHandle(activeProfile.id || '')
   const [tab, setTab] = React.useState<TabKey>('notifications')

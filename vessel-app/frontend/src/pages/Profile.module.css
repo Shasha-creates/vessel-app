@@ -223,7 +223,6 @@
   cursor: pointer;
 }
 
-<<<<<<< HEAD
 .gridVideo {
   position: absolute;
   inset: 0;
@@ -245,7 +244,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
-=======
+}
 .gridItem:focus-visible {
   outline: 2px solid rgba(116, 241, 255, 0.7);
   outline-offset: 3px;
@@ -282,7 +281,6 @@
 .gridActionButton:focus-visible {
   outline: 2px solid rgba(116, 241, 255, 0.7);
   outline-offset: 2px;
->>>>>>> c51cacb59e1ea0ff2a05c5725ac90b7c9f5ec82c
 }
 
 .settingsPanel {
@@ -802,6 +800,8 @@
     flex-direction: column;
   }
 }
+
+
 
 
 

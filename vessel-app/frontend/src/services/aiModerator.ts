@@ -19,37 +19,145 @@ type ModerationResponse = {
   issues: ModerationIssue[]
 }
 
-type BlockRule = {
-  label: string
-  pattern: RegExp
-  reason: string
+const LEET_MAP: Record<string, string> = {
+  '0': 'o',
+  '1': 'i',
+  '3': 'e',
+  '4': 'a',
+  '5': 's',
+  '6': 'g',
+  '7': 't',
+  '8': 'b',
+  '9': 'g',
+  '@': 'a',
+  '$': 's',
+  '!': 'i',
 }
 
-const BLOCK_RULES: BlockRule[] = [
-  { label: 'profanity', pattern: /\b(damn|hell|shit|bullshit|asshole|bastard)\b/gi, reason: 'Contains profanity.' },
-  { label: 'explicit', pattern: /\b(fuck|fucking|motherfucker|dick|pussy|bitch)\b/gi, reason: 'Contains explicit language.' },
-  {
-   label: 'disrespect',
-    pattern: /\b(satanic|demonic|curse you|go to hell|hate church)\b/gi,
-   reason: 'Contains language that conflicts with community values.',
-  },
+function normalize(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .split('')
+    .map((char) => {
+      if (/[a-z]/.test(char)) return char
+      if (LEET_MAP[char]) return LEET_MAP[char]
+      if (/\s/.test(char)) return ' '
+      return ' '
+    })
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+type TermRule = {
+  label: string
+  reason: string
+  terms: string[]
+}
+
+const profanityTerms = [
+  'fuck',
+  'shit',
+  'bullshit',
+  'bitch',
+  'slut',
+  'whore',
+  'dick',
+  'pussy',
+  'asshole',
+  'motherfucker',
+  'bloody hell',
+  'screw you',
+  'damn',
+  'hell no',
+  'hoe',
+  'thot',
+  'mf',
+  'fkn',
+  'fml',
 ]
+
+const spanishPortuguese = [
+  'puta',
+  'puto',
+  'mierda',
+  'pendejo',
+  'cabron',
+  'chingar',
+  'coño',
+  'porra',
+  'caralho',
+  'merda',
+  'safado',
+  'piranha',
+]
+
+const french = ['merde', 'putain', 'salope', 'connard', 'encule']
+
+const afrikaansAndZulu = ['bliksem', 'poes', 'doos', 'naai', 'sukkel', 'moer', 'voetsek', 'inyoko', 'hamba uyofa', 'fat poes']
+
+const hateSpeech = ['nigger', 'nigga', 'faggot', 'retard', 'spic', 'chink', 'coon', 'wetback', 'kafir']
+
+const violence = ['kill yourself', 'kys', 'hang yourself', 'commit suicide', 'die in hell', 'burn in hell', 'i will kill you']
+
+const TERM_RULES: TermRule[] = [
+  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: profanityTerms },
+  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: spanishPortuguese },
+  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: french },
+  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: afrikaansAndZulu },
+  { label: 'hate', reason: 'Hate speech is never allowed.', terms: hateSpeech },
+  { label: 'violence', reason: 'Threats or encouragement of self-harm/violence are not allowed.', terms: violence },
+]
+
+type CompiledRule = {
+  label: string
+  reason: string
+  pattern: RegExp
+}
+
+function termToPattern(term: string): RegExp | null {
+  const normalized = normalize(term)
+  if (!normalized) {
+    return null
+  }
+  const wordPatterns = normalized
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.split('').map((char) => `${char}+`).join('[\\s]*'))
+  const body = wordPatterns.join('\\s+')
+  return new RegExp(`(^|\\s)${body}(?=\\s|$)`, 'i')
+}
+
+const COMPILED_RULES: CompiledRule[] = TERM_RULES.flatMap((rule) =>
+  rule.terms
+    .map((term) => {
+      const pattern = termToPattern(term)
+      if (!pattern) return null
+      return {
+        label: rule.label,
+        reason: rule.reason,
+        pattern,
+      }
+    })
+    .filter((entry): entry is CompiledRule => Boolean(entry))
+)
 
 function scanField(field: ModerationField): ModerationIssue[] {
   const issues: ModerationIssue[] = []
-  const normalized = field.text.toLowerCase()
+  const normalizedText = normalize(field.text)
 
-  for (const rule of BLOCK_RULES) {
-    rule.pattern.lastIndex = 0
-    const match = rule.pattern.exec(normalized)
-    if (match) {
-      const snippet = field.text.slice(Math.max(0, match.index - 10), Math.min(field.text.length, match.index + match[0].length + 10))
+  for (const rule of COMPILED_RULES) {
+    if (!normalizedText) break
+    if (rule.pattern.test(normalizedText)) {
       issues.push({
         field: field.label,
-        snippet: snippet.trim(),
+        snippet: field.text,
         reason: rule.reason,
       })
     }
+    rule.pattern.lastIndex = 0
   }
 
   return issues

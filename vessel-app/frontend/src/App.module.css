@@ -99,3 +99,111 @@
   border-radius: 999px;
   padding: 0 0.35rem;
 }
+
+.adminLock {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: radial-gradient(circle at top, #1b1e2b, #0b0d16 65%);
+}
+
+.adminPanel {
+  width: min(420px, 92vw);
+  background: rgba(9, 12, 24, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  color: #f5f7ff;
+  box-shadow: 0 35px 65px -40px rgba(6, 8, 16, 0.9);
+}
+
+.adminHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.adminHeader p:first-child {
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+  font-size: 0.72rem;
+  color: rgba(245, 247, 255, 0.7);
+  margin: 0;
+}
+
+.adminHeader h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+}
+
+.adminForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.adminField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  font-weight: 600;
+  color: rgba(245, 247, 255, 0.8);
+}
+
+.adminField input {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(12, 16, 30, 0.8);
+  padding: 0.8rem 1rem;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.adminField input:focus {
+  outline: 2px solid rgba(108, 168, 255, 0.55);
+}
+
+.adminForm button {
+  border: none;
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  background: linear-gradient(135deg, #6d8bff 0%, #74f1ff 100%);
+  color: #0c1324;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.adminForm button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.adminForm button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 15px 30px -18px rgba(104, 165, 255, 0.9);
+}
+
+.adminError {
+  margin: 0;
+  color: #ff8f96;
+  font-weight: 600;
+}
+
+.adminHelper {
+  margin-top: 1.75rem;
+  font-size: 0.9rem;
+  color: rgba(245, 247, 255, 0.7);
+}
+
+.adminHelper a {
+  color: #72deff;
+  font-weight: 600;
+}
