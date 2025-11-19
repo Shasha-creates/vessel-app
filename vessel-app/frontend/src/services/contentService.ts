@@ -24,6 +24,7 @@ const FOLLOWING_STORAGE_KEY = 'vessel_following_ids_v1'
 const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
 const DEFAULT_VIDEO_PLACEHOLDER = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 const DEFAULT_THUMB_PLACEHOLDER = 'https://placehold.co/640x360?text=Vessel'
+export const THUMBNAIL_PLACEHOLDER = DEFAULT_THUMB_PLACEHOLDER
 const NETWORK_DELAY_MIN = 220
 const NETWORK_DELAY_MAX = 520
 const NETWORK_FAILURE_RATE = 0.05
@@ -31,11 +32,46 @@ const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
 const MODERATION_CONTEXT_PROFILE = 'profile'
 const MODERATION_CONTEXT_UPLOAD = 'upload'
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const VIDEO_FILE_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv'])
 let remoteFeed: Video[] = []
 
 type StoredUpload = Omit<Video, 'videoUrl'>
 type CommentableVideo = Video
 
+const normalizedSeedVideos: Video[] = seedVideos.map((clip) => ({
+  ...clip,
+  thumbnailUrl: resolveThumbnailUrl(clip.thumbnailUrl, clip.videoUrl),
+}))
+
+function resolveThumbnailUrl(candidate?: string | null, fallbackVideo?: string | null): string {
+  const trimmedCandidate = (candidate ?? '').trim()
+  if (trimmedCandidate && !isLikelyVideoAsset(trimmedCandidate)) {
+    return trimmedCandidate
+  }
+  const trimmedFallback = (fallbackVideo ?? '').trim()
+  if (trimmedFallback && !isLikelyVideoAsset(trimmedFallback)) {
+    return trimmedFallback
+  }
+  return DEFAULT_THUMB_PLACEHOLDER
+}
+
+function isLikelyVideoAsset(url?: string | null): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  if (!trimmed) return false
+  const pathname = (() => {
+    try {
+      const parsed = new URL(trimmed)
+      return parsed.pathname
+    } catch {
+      return trimmed
+    }
+  })()
+  const sanitized = pathname.split('?')[0]?.split('#')[0] ?? pathname
+  const dotIndex = sanitized.lastIndexOf('.')
+  const ext = dotIndex >= 0 ? sanitized.slice(dotIndex).toLowerCase() : ''
+  return VIDEO_FILE_EXTENSIONS.has(ext)
+}
 type ApiVideoComment = {
   id: string
   videoId: string
@@ -620,8 +656,10 @@ function makeSerializableUpload(clip: Video): StoredUpload {
 }
 
 function reviveStoredUpload(stored: StoredUpload): Video {
+  const safeThumbnail = resolveThumbnailUrl(stored.thumbnailUrl)
   return {
     ...stored,
+    thumbnailUrl: safeThumbnail,
     videoUrl: stored.thumbnailUrl || DEFAULT_VIDEO_PLACEHOLDER,
     likesDisplay: stored.likesDisplay ?? formatLikes(stored.likes),
   }
@@ -930,7 +968,7 @@ function buildLocalSuggestions(limit: number): SuggestedConnection[] {
   const seen = new Set<string>()
   const suggestions: SuggestedConnection[] = []
 
-  for (const clip of seedVideos) {
+  for (const clip of normalizedSeedVideos) {
     const creator = clip.user
     const handleSource =
       creator.handle || creator.accountId || creator.id || (creator.name ? slugifyDisplayName(creator.name) : '')
@@ -1058,7 +1096,7 @@ function mapApiVideo(video: ApiFeedVideo): Video {
       avatar: video.user.photoUrl ?? undefined,
     },
     videoUrl: video.videoUrl,
-    thumbnailUrl: video.thumbnailUrl || video.videoUrl,
+    thumbnailUrl: resolveThumbnailUrl(video.thumbnailUrl, video.videoUrl),
     category: (video.category as ContentCategory) || 'testimony',
     tags: video.tags ?? [],
     durationSec: video.durationSeconds ?? 0,
@@ -1140,7 +1178,7 @@ function ensureLibraryHydrated() {
 
 function getLibrary(): Video[] {
   ensureLibraryHydrated()
-  return [...remoteFeed, ...uploads, ...seedVideos]
+  return [...remoteFeed, ...uploads, ...normalizedSeedVideos]
 }
 
 function notify() {
@@ -1175,6 +1213,23 @@ function mergeRemoteFeed(videos: Video[], options: { silent?: boolean } = {}) {
 function persistIfUpload(clipId: string) {
   if (uploads.find((item) => item.id === clipId)) {
     persistUploads()
+  }
+}
+
+function removeClipFromFeeds(clipId: string) {
+  const nextRemote = remoteFeed.filter((clip) => clip.id !== clipId)
+  const nextUploads = uploads.filter((clip) => clip.id !== clipId)
+  const remoteChanged = nextRemote.length !== remoteFeed.length
+  const uploadsChanged = nextUploads.length !== uploads.length
+  remoteFeed = nextRemote
+  if (uploadsChanged) {
+    uploads = nextUploads
+    persistUploads()
+  } else {
+    uploads = nextUploads
+  }
+  if (remoteChanged || uploadsChanged) {
+    notify()
   }
 }
 
@@ -1445,6 +1500,15 @@ export const contentService = {
     const clip = mapApiVideo(payload.video)
     mergeRemoteFeed([clip])
     return clip
+  },
+  async deleteUpload(clipId: string) {
+    requireVerifiedSession('delete videos')
+    const trimmed = clipId.trim()
+    if (!trimmed) {
+      throw new Error('Select a video to delete.')
+    }
+    await deleteJson(`/api/feed/videos/${encodeURIComponent(trimmed)}`, true)
+    removeClipFromFeeds(trimmed)
   },
   async recordLike(clipId: string) {
     requireVerifiedSession('like videos')

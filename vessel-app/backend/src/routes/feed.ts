@@ -6,14 +6,18 @@ import { z } from 'zod'
 import { requireAuth } from '../utils/authMiddleware'
 import {
   createVideoRecord,
+  deleteVideoRecord,
+  getVideoById,
   listRecentVideos,
   listVideosByAuthors,
+  DEFAULT_THUMBNAIL_URL,
   type FeedVideoRecord,
 } from '../services/videoFeedService'
 import { findUserByHandle, findUserById, presentUser } from '../services/userService'
 import { listFollowing } from '../services/followService'
 
 const router = Router()
+const VIDEO_FILE_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv'])
 
 const uploadDir = path.resolve(process.cwd(), 'uploads')
 fs.mkdirSync(uploadDir, { recursive: true })
@@ -114,9 +118,10 @@ router.post('/videos', requireAuth, upload.single('file'), async (req, res, next
       const publicPath = `/uploads/${req.file.filename}`
       videoUrl = buildPublicUrl(req, publicPath)
       if (!thumbnailUrl) {
-        thumbnailUrl = videoUrl
+        thumbnailUrl = ''
       }
     }
+    thumbnailUrl = resolveThumbnailUrl(thumbnailUrl, videoUrl)
 
     if (!videoUrl) {
       return res.status(400).json({ message: 'Upload a video file or provide videoUrl.' })
@@ -134,6 +139,30 @@ router.post('/videos', requireAuth, upload.single('file'), async (req, res, next
     })
 
     res.status(201).json({ video: presentFeedVideo(record) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.delete('/videos/:videoId', requireAuth, async (req, res, next) => {
+  try {
+    const videoId = (req.params.videoId || '').trim()
+    if (!videoId) {
+      return res.status(400).json({ message: 'videoId is required' })
+    }
+    const record = await getVideoById(videoId)
+    if (!record) {
+      return res.status(404).json({ message: 'Video not found.' })
+    }
+    if (record.user.id !== req.authUser!.id) {
+      return res.status(403).json({ message: 'You can only delete your own uploads.' })
+    }
+    const deleted = await deleteVideoRecord(videoId, req.authUser!.id)
+    if (!deleted) {
+      return res.status(404).json({ message: 'Video not found.' })
+    }
+    await deleteUploadedAssets([record.video_url, record.thumbnail_url])
+    res.status(204).end()
   } catch (error) {
     next(error)
   }
@@ -196,7 +225,7 @@ function presentFeedVideo(row: FeedVideoRecord) {
     title: row.title,
     description: row.description ?? '',
     videoUrl: row.video_url,
-    thumbnailUrl: row.thumbnail_url ?? row.video_url,
+    thumbnailUrl: resolveThumbnailUrl(row.thumbnail_url, row.video_url),
     category: row.category,
     tags: row.tags ?? [],
     durationSeconds: row.duration_seconds ?? 0,
@@ -207,6 +236,80 @@ function presentFeedVideo(row: FeedVideoRecord) {
     },
     user: presentUser(row.user),
   }
+}
+
+function resolveThumbnailUrl(candidate?: string | null, fallbackVideo?: string | null): string {
+  const trimmedCandidate = (candidate ?? '').trim()
+  if (trimmedCandidate && !isLikelyVideoAsset(trimmedCandidate)) {
+    return trimmedCandidate
+  }
+  const trimmedFallback = (fallbackVideo ?? '').trim()
+  if (trimmedFallback && !isLikelyVideoAsset(trimmedFallback)) {
+    return trimmedFallback
+  }
+  return DEFAULT_THUMBNAIL_URL
+}
+
+function isLikelyVideoAsset(url?: string | null): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  if (!trimmed) return false
+  const pathname = (() => {
+    try {
+      const parsed = new URL(trimmed)
+      return parsed.pathname
+    } catch {
+      return trimmed
+    }
+  })()
+  const sanitized = pathname.split('?')[0]?.split('#')[0] ?? pathname
+  const ext = path.extname(sanitized).toLowerCase()
+  return VIDEO_FILE_EXTENSIONS.has(ext)
+}
+
+async function deleteUploadedAssets(urls: Array<string | null | undefined>): Promise<void> {
+  const targets = urls
+    .map((url) => resolveLocalUploadPath(url))
+    .filter((assetPath): assetPath is string => Boolean(assetPath))
+  await Promise.all(
+    targets.map(async (assetPath) => {
+      try {
+        await fs.promises.unlink(assetPath)
+      } catch (error: any) {
+        if (error?.code !== 'ENOENT') {
+          // eslint-disable-next-line no-console
+          console.warn('Unable to delete uploaded asset', assetPath, error)
+        }
+      }
+    })
+  )
+}
+
+function resolveLocalUploadPath(assetUrl?: string | null): string | null {
+  if (!assetUrl) {
+    return null
+  }
+  const trimmed = assetUrl.trim()
+  if (!trimmed) return null
+  const pathname = (() => {
+    try {
+      const parsed = new URL(trimmed)
+      return parsed.pathname
+    } catch {
+      return trimmed
+    }
+  })()
+  if (!pathname.startsWith('/uploads/')) {
+    return null
+  }
+  const relativePath = pathname.replace('/uploads/', '')
+  const normalized = path.normalize(relativePath)
+  const resolved = path.resolve(uploadDir, normalized)
+  const relativeToUpload = path.relative(uploadDir, resolved)
+  if (relativeToUpload.startsWith('..') || path.isAbsolute(relativeToUpload)) {
+    return null
+  }
+  return resolved
 }
 
 export default router
