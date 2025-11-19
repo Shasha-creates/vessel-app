@@ -1,36 +1,89 @@
 import React from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import VideoCard from '../shared/VideoCard'
-import { contentService, type Video } from '../services/contentService'
-import { Media } from '../media'
+import { contentService, type Video, type VideoComment } from '../services/contentService'
+import { formatLikes } from '../services/mockData'
+import { formatRelativeTime } from '../utils/time'
 import styles from './Home.module.css'
 
+const TABS = ['Live', 'Music', 'Following', 'For You', 'Prayer']
+const FALLBACK_BACKDROP =
+  'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80'
+
 export default function Home() {
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null)
   const [featured, setFeatured] = React.useState<Video[]>([])
+  const [comments, setComments] = React.useState<VideoComment[]>([])
+  const [commentsLoading, setCommentsLoading] = React.useState(false)
+  const [commentsError, setCommentsError] = React.useState<string | null>(null)
   const [searchParams] = useSearchParams()
-  const query = (searchParams.get('q') || '').trim()
-  const normalizedQuery = query.toLowerCase()
+  const initialQuery = (searchParams.get('q') || '').trim()
+  const [searchValue, setSearchValue] = React.useState(initialQuery)
+  const [isCommentsOpen, setIsCommentsOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    async function load() {
+    let cancelled = false
+    async function loadFeed() {
       try {
         const feed = await contentService.fetchForYouFeed()
-        setFeatured(feed)
-        setError(null)
+        if (!cancelled) {
+          setFeatured(feed)
+          setError(null)
+        }
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Unable to load the featured feed.'
-        setError(message)
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Unable to load the featured feed.'
+          setError(message)
+        }
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
-    load()
+    loadFeed()
+    return () => {
+      cancelled = true
+    }
   }, [])
 
+  const heroVideo = featured[0] ?? null
+  const heroBackground = heroVideo?.thumbnailUrl || FALLBACK_BACKDROP
+
+  React.useEffect(() => {
+    if (!isCommentsOpen || !heroVideo) {
+      return
+    }
+    let cancelled = false
+    setCommentsLoading(true)
+    setCommentsError(null)
+    contentService
+      .fetchClipComments(heroVideo.id)
+      .then((data) => {
+        if (!cancelled) {
+          setComments(data)
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          const message = err instanceof Error ? err.message : 'Unable to load comments.'
+          setCommentsError(message)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setCommentsLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [heroVideo, isCommentsOpen])
+
   const searchResults = React.useMemo(() => {
-    if (!normalizedQuery) {
+    const normalized = searchValue.trim().toLowerCase()
+    if (!normalized) {
       return []
     }
     return featured.filter((clip) => {
@@ -38,70 +91,185 @@ export default function Home() {
         clip.title,
         clip.description,
         clip.user.name,
+        clip.user.id,
         clip.category,
         clip.tags?.join(' ') ?? '',
       ]
         .join(' ')
         .toLowerCase()
-      return haystack.includes(normalizedQuery)
+      return haystack.includes(normalized)
     })
-  }, [featured, normalizedQuery])
+  }, [featured, searchValue])
 
-  const heroCards = React.useMemo(() => featured.slice(0, 3), [featured])
-  const isSearching = !!normalizedQuery
+  const likesDisplay = heroVideo?.likesDisplay ?? formatLikes(heroVideo?.likes ?? 0)
+  const commentsDisplay = formatLikes(heroVideo?.comments ?? comments.length)
+  const savesDisplay = formatLikes(heroVideo?.bookmarks ?? 0)
 
   return (
     <div className={styles.home}>
-      {isSearching ? (
-        <section className={styles.searchPanel}>
-          <div>
-            <p className={styles.searchEyebrow}>Search Godlyme</p>
-            <h1 className={styles.searchHeading}>Results for “{query}”</h1>
-            <p className={styles.searchTip}>
-              Looking for a specific creator? Start your search with “@” to jump straight to their handle. You can also
-              search topics, testimonies, and prayer themes to explore inspiring moments.
+      <div className={styles.backdrop} style={{ backgroundImage: `url(${heroBackground})` }} />
+      <div className={styles.backdropOverlay} />
+
+      <div className={styles.screen}>
+        <div className={styles.headerRow}>
+          <div className={styles.tabGroup}>
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={`${styles.tab} ${tab === 'For You' ? styles.tabActive : ''}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={styles.searchButton}
+            onClick={() => searchInputRef.current?.focus()}
+          >
+            🔍
+          </button>
+        </div>
+
+        <div className={styles.searchBar}>
+          <span aria-hidden="true">🔍</span>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            placeholder="Search creators, testimonies, verses…"
+          />
+          {searchValue ? (
+            <button type="button" aria-label="Clear search" onClick={() => setSearchValue('')}>
+              ✕
+            </button>
+          ) : null}
+        </div>
+        {searchValue ? (
+          <div className={styles.inlineResults}>
+            {loading ? (
+              <p>Gathering the latest moments…</p>
+            ) : error ? (
+              <p className={styles.searchError}>{error}</p>
+            ) : searchResults.length ? (
+              searchResults.slice(0, 5).map((clip) => (
+                <Link key={clip.id} to={`/watch/${clip.id}`} className={styles.resultItem}>
+                  <strong>{clip.title}</strong>
+                  <span>{clip.user.name}</span>
+                </Link>
+              ))
+            ) : (
+              <p>No matching clips yet. Try another keyword.</p>
+            )}
+          </div>
+        ) : null}
+
+        <div className={styles.contentRow}>
+          <div className={styles.videoMeta}>
+            <div className={styles.creatorRow}>
+              <div className={styles.creatorAvatar}>
+                {heroVideo ? heroVideo.user.name.slice(0, 1).toUpperCase() : '?'}
+              </div>
+              <div>
+                <p className={styles.creatorHandle}>
+                  {heroVideo ? `@${heroVideo.user.id}` : '@creator'}
+                  <span className={styles.creatorChurch}>
+                    {heroVideo?.user.churchHome || heroVideo?.user.ministryRole || 'Vessel Community'}
+                  </span>
+                </p>
+                <p className={styles.creatorName}>{heroVideo?.user.name ?? 'Featured Creator'}</p>
+              </div>
+              <button type="button" className={styles.followButton}>
+                Follow
+              </button>
+            </div>
+            <p className={styles.videoCategory}>{heroVideo?.category?.toUpperCase() ?? 'WORSHIP'}</p>
+            <h1 className={styles.videoTitle}>{heroVideo?.title ?? 'Sunrise Worship Session'}</h1>
+            <p className={styles.videoDescription}>{heroVideo?.description ?? 'An intimate moment of worship.'}</p>
+            <p className={styles.videoDescription}>
+              {heroVideo?.scripture?.reference ?? 'Psalms 113:3'}
             </p>
           </div>
-          {loading ? (
-            <p className={styles.searchStatus}>Searching the latest moments…</p>
-          ) : error ? (
-            <p className={`${styles.searchStatus} ${styles.searchError}`}>{error}</p>
-          ) : searchResults.length ? (
-            <div className={styles.searchResults}>
-              {searchResults.map((clip) => (
-                <Link key={clip.id} to={`/watch/${clip.id}`} className={styles.cardLink}>
-                  <VideoCard video={clip} />
-                </Link>
-              ))}
+
+          <div className={styles.actionRail}>
+            <button type="button" className={styles.actionButton}>
+              <span role="img" aria-label="likes">
+                🤍
+              </span>
+              <small>{likesDisplay}</small>
+            </button>
+            <button
+              type="button"
+              className={styles.actionButton}
+              onClick={() => setIsCommentsOpen(true)}
+              disabled={!heroVideo}
+            >
+              <span role="img" aria-label="comments">
+                💬
+              </span>
+              <small>{commentsDisplay}</small>
+            </button>
+            <button type="button" className={styles.actionButton}>
+              <span role="img" aria-label="saves">
+                🔖
+              </span>
+              <small>{savesDisplay}</small>
+            </button>
+            <button type="button" className={styles.actionButton}>
+              <span role="img" aria-label="gift">
+                🎁
+              </span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      {isCommentsOpen ? (
+        <div className={styles.commentsOverlay} role="dialog" aria-modal="true">
+          <div className={styles.commentsPanel}>
+            <div className={styles.commentsHeader}>
+              <div>
+                <p>Comments</p>
+                <strong>{commentsDisplay}</strong>
+              </div>
+              <button type="button" onClick={() => setIsCommentsOpen(false)} aria-label="Close comments">
+                ✕
+              </button>
             </div>
-          ) : (
-            <p className={styles.searchStatus}>
-              No matching clips yet. Try a different keyword or search with “@handle” to jump directly to a profile.
-            </p>
-          )}
-        </section>
-      ) : (
-        <>
-          <header className={styles.hero}>
-            <img src={Media.icons.logo} alt="Godlyme" className={styles.brandMark} />
-            <h1>Vessel brings faith-filled stories to your daily scroll.</h1>
-            <p>
-              Explore worship moments, testimonies, and scripture meditations designed to strengthen your walk with
-              Jesus and spark hope in others.
-            </p>
-            <p className={styles.heroTip}>
-              Tip: Tap the search icon in the app to look up creators, verses, and topics—start with “@” for handles.
-            </p>
-          </header>
-          <section className={styles.featured}>
-            {heroCards.map((clip) => (
-              <Link key={clip.id} to={`/watch/${clip.id}`} className={styles.cardLink}>
-                <VideoCard video={clip} />
-              </Link>
-            ))}
-          </section>
-        </>
-      )}
+            <div className={styles.commentsBody}>
+              {commentsLoading ? (
+                <p>Loading conversation…</p>
+              ) : commentsError ? (
+                <p className={styles.commentsError}>{commentsError}</p>
+              ) : comments.length ? (
+                comments.map((comment) => (
+                  <div key={comment.id} className={styles.commentRow}>
+                    <div className={styles.commentAvatar}>{comment.user.name.slice(0, 1).toUpperCase()}</div>
+                    <div>
+                      <p className={styles.commentMeta}>
+                        <span>@{comment.user.id}</span>
+                        <span>{formatRelativeTime(comment.createdAt)}</span>
+                      </p>
+                      <p>{comment.body}</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p>Be the first to encourage this creator.</p>
+              )}
+            </div>
+            <div className={styles.commentComposer}>
+              <input type="text" placeholder="Add a comment…" disabled />
+              <button type="button" disabled>
+                ⬆️
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

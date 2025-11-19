@@ -80,6 +80,18 @@ export default function Profile() {
 
   const followTargetId = isSelf ? "" : heroClip?.user.id ?? targetId
 
+  const openSettings = React.useCallback(
+    (mode?: AuthMode) => {
+      const search = mode ? `?mode=${mode}` : ""
+      navigate(`/profile/me/settings${search}`)
+    },
+    [navigate]
+  )
+
+  const headerAction = isSelf
+    ? { label: "Open profile settings", icon: "\u2699", onClick: () => openSettings() }
+    : { label: "Copy profile link", icon: "\u2934", onClick: copyProfileLink }
+
   React.useEffect(() => {
     if (!targetId) return
     const refresh = () => {
@@ -315,27 +327,18 @@ export default function Profile() {
     }
   }
 
-  const openSettings = React.useCallback(
-    (mode?: AuthMode) => {
-      const search = mode ? `?mode=${mode}` : ""
-      navigate(`/profile/me/settings${search}`)
-    },
-    [navigate]
-  )
-
   return (
     <div className={styles.profile}>
       <header className={styles.topBar}>
-        <button type="button" className={styles.topIcon} onClick={() => navigate(-1)} aria-label="Back">
-          Back
+        <div />
+        <button
+          type="button"
+          className={styles.headerButton}
+          onClick={headerAction.onClick}
+          aria-label={headerAction.label}
+        >
+          <span aria-hidden="true">{headerAction.icon}</span>
         </button>
-        <div className={styles.topIconGroup}>
-          {isSelf ? (
-            <button type="button" className={styles.heroSettingsButton} onClick={() => openSettings()}>
-              Settings
-            </button>
-          ) : null}
-        </div>
       </header>
 
       <section className={styles.hero}>

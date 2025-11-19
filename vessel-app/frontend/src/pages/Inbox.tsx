@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import styles from './Inbox.module.css'
 import { AuthOverlay, type AuthMode } from './Settings'
 import {
@@ -19,6 +20,7 @@ type SuggestedCard = SuggestedConnection & {
 const quickReplyOptions = ['Thanks so much!', "Let's schedule something.", 'Appreciate you sharing this.', 'Praying with you!']
 
 export default function Inbox() {
+  const navigate = useNavigate()
   const [activeProfile, setActiveProfile] = React.useState(() => contentService.getActiveProfile())
   const selfHandle = normalizeHandle(activeProfile.id || '')
   const [tab, setTab] = React.useState<TabKey>('notifications')
@@ -307,13 +309,21 @@ export default function Inbox() {
     } else {
       tabContent = notifications.map((item) => {
         const actorHandle = formatHandle(item.actor.handle || item.actor.name)
+        const actorTarget = resolveNotificationActorTarget(item.actor)
         const copy = formatNotificationCopy(item)
         return (
           <article key={item.id} className={styles.notificationCard}>
             <div className={styles.notificationIcon}>{badgeIcon(item.type)}</div>
             <div className={styles.notificationCopy}>
               <span className={styles.notificationMessage}>
-                <span className={styles.notificationHandle}>{actorHandle}</span> {copy}
+                <button
+                  type="button"
+                  className={styles.notificationHandle}
+                  onClick={() => navigate(`/profile/${actorTarget}`)}
+                >
+                  {actorHandle}
+                </button>{' '}
+                {copy}
               </span>
               {item.commentPreview ? (
                 <span className={styles.notificationPreview}>{item.commentPreview}</span>
@@ -355,80 +365,90 @@ export default function Inbox() {
         const timeAgo = formatRelativeTime(lastTimestamp, true)
         const badgeLetter = (title.replace(/^@/, '') || 'c')[0]?.toUpperCase() ?? 'C'
         const isSending = sendingThreadId === thread.id
+        const isExpanded = Boolean(isActive && activeThread)
         return (
-          <article key={thread.id} className={`${styles.item} ${styles.thread}`}>
+          <article
+            key={thread.id}
+            className={`${styles.threadCard} ${isExpanded ? styles.threadCardExpanded : ''}`}
+          >
             <button
               type="button"
-              className={`${styles.threadHeader} ${isActive ? styles.threadHeaderActive : ''}`}
+              className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
               onClick={() => handleSelectThread(thread.id)}
+              aria-expanded={isExpanded}
             >
-              <div className={`${styles.badge} ${thread.unreadCount > 0 ? styles.unread : styles.message}`}>
+              <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
                 {badgeLetter}
               </div>
-              <div className={styles.body}>
-                <div className={styles.title}>
-                  <span className={styles.actor}>{title}</span>
+              <div className={styles.threadCopy}>
+                <div className={styles.threadTitleRow}>
+                  <span className={styles.threadActor}>{title}</span>
+                  <span className={styles.threadTime}>{timeAgo}</span>
                 </div>
-                <p className={styles.preview}>{preview}</p>
-                <span className={styles.time}>{timeAgo}</span>
+                <p className={styles.threadPreview}>{preview}</p>
               </div>
             </button>
 
-            {isActive && activeThread ? (
-              <div className={styles.conversation}>
-                {messageError ? <div className={styles.contactError}>{messageError}</div> : null}
-                <div className={styles.messageList}>
-                  {messagesBusy && !messages.length ? (
-                    <div className={styles.status}>Loading conversation...</div>
-                  ) : null}
-                  {messages.map((message) => {
-                    const fromMe = isMessageFromCurrentUser(message, selfHandle)
-                    return (
-                      <div
-                        key={message.id}
-                        className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
+            <div
+              className={`${styles.conversation} ${isExpanded ? styles.conversationOpen : styles.conversationClosed}`}
+              aria-hidden={!isExpanded}
+            >
+              {isExpanded ? (
+                <>
+                  {messageError ? <div className={styles.contactError}>{messageError}</div> : null}
+                  <div className={styles.messageList}>
+                    {messagesBusy && !messages.length ? (
+                      <div className={styles.status}>Loading conversation...</div>
+                    ) : null}
+                    {messages.map((message) => {
+                      const fromMe = isMessageFromCurrentUser(message, selfHandle)
+                      return (
+                        <div
+                          key={message.id}
+                          className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
+                        >
+                          <span>{message.body}</span>
+                          <span className={styles.bubbleMeta}>{formatRelativeTime(message.createdAt)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div className={styles.quickReplies}>
+                    {quickReplyOptions.map((reply) => (
+                      <button
+                        key={`${thread.id}-${reply}`}
+                        type="button"
+                        className={styles.quickReply}
+                        onClick={() => sendMessage(thread.id, reply)}
+                        disabled={isSending}
                       >
-                        <span>{message.body}</span>
-                        <span className={styles.bubbleMeta}>{formatRelativeTime(message.createdAt)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
+                        {reply}
+                      </button>
+                    ))}
+                  </div>
 
-                <div className={styles.quickReplies}>
-                  {quickReplyOptions.map((reply) => (
-                    <button
-                      key={`${thread.id}-${reply}`}
-                      type="button"
-                      className={styles.quickReply}
-                      onClick={() => sendMessage(thread.id, reply)}
+                  <form
+                    className={styles.composer}
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      sendMessage(thread.id)
+                    }}
+                  >
+                    <textarea
+                      value={draftValue}
+                      onChange={(event) => updateDraft(thread.id, event.target.value)}
+                      placeholder="Type a message..."
+                      rows={2}
                       disabled={isSending}
-                    >
-                      {reply}
+                    />
+                    <button type="submit" disabled={!draftValue.trim() || isSending}>
+                      {isSending ? 'Sending...' : 'Send'}
                     </button>
-                  ))}
-                </div>
-
-                <form
-                  className={styles.composer}
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    sendMessage(thread.id)
-                  }}
-                >
-                  <textarea
-                    value={draftValue}
-                    onChange={(event) => updateDraft(thread.id, event.target.value)}
-                    placeholder="Type a message..."
-                    rows={2}
-                    disabled={isSending}
-                  />
-                  <button type="submit" disabled={!draftValue.trim() || isSending}>
-                    {isSending ? 'Sending...' : 'Send'}
-                  </button>
-                </form>
-              </div>
-            ) : null}
+                  </form>
+                </>
+              ) : null}
+            </div>
           </article>
         )
       })
@@ -539,12 +559,12 @@ export default function Inbox() {
 function badgeIcon(type: NotificationSummary['type']) {
   switch (type) {
     case 'like':
-      return '<3'
+      return '❤️'
     case 'comment':
-      return 'C'
+      return '💬'
     case 'follow':
     default:
-      return '+'
+      return '➕'
   }
 }
 
@@ -589,3 +609,19 @@ function isMessageFromCurrentUser(message: ThreadMessage, selfHandle: string): b
   return normalizeHandle(message.sender.handle || message.sender.name) === selfHandle
 }
 
+function resolveNotificationActorTarget(actor: NotificationSummary['actor']): string {
+  const handle = (actor.handle || '').trim()
+  if (handle) {
+    return handle.replace(/^@/, '')
+  }
+  const identifier = (actor.id || '').trim()
+  if (identifier) {
+    return identifier
+  }
+  const fallback = (actor.name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return fallback || 'creator'
+}
