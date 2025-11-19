@@ -1,3 +1,5 @@
+type ModerationContext = 'profile' | 'upload' | 'message' | 'comment'
+
 type ModerationField = {
   label: string
   text: string
@@ -7,11 +9,6 @@ type ModerationIssue = {
   field: string
   snippet: string
   reason: string
-}
-
-type ModerationRequest = {
-  context: 'profile' | 'upload' | 'message' | 'comment'
-  fields: ModerationField[]
 }
 
 type ModerationResponse = {
@@ -162,7 +159,7 @@ function scanField(field: ModerationField): ModerationIssue[] {
   return issues
 }
 
-function review(request: ModerationRequest): ModerationResponse {
+function review(request: { context: ModerationContext; fields: ModerationField[] }): ModerationResponse {
   const issues = request.fields.flatMap(scanField)
   return {
     approved: issues.length === 0,
@@ -170,8 +167,27 @@ function review(request: ModerationRequest): ModerationResponse {
   }
 }
 
-export const aiModerator = {
-  review,
-}
+export function enforceModeration(
+  context: ModerationContext,
+  fields: Array<{ label: string; text?: string | null }>
+) {
+  const sanitized = fields
+    .map((field) => ({
+      label: field.label,
+      text: (field.text ?? '').trim(),
+    }))
+    .filter((field) => field.text.length > 0)
 
-export type { ModerationRequest, ModerationResponse, ModerationIssue, ModerationField }
+  if (!sanitized.length) {
+    return
+  }
+
+  const outcome = review({ context, fields: sanitized })
+  if (!outcome.approved) {
+    const issue = outcome.issues[0]
+    const message = issue ? `${issue.reason} (${issue.field}).` : 'Content needs another pass before sharing.'
+    const error = new Error(message)
+    ;(error as any).status = 400
+    throw error
+  }
+}

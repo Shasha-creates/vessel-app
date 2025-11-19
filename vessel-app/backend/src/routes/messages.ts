@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../utils/authMiddleware'
+import { enforceModeration } from '../utils/moderation'
 import {
   appendMessage,
   createThreadWithMessage,
@@ -35,6 +36,10 @@ router.get('/threads', requireAuth, async (req, res, next) => {
 router.post('/threads', requireAuth, async (req, res, next) => {
   try {
     const payload = createThreadSchema.parse(req.body ?? {})
+    enforceModeration('message', [
+      { label: 'Message', text: payload.message },
+      { label: 'Subject', text: payload.subject ?? '' },
+    ])
     const thread = await createThreadWithMessage(req.authUser!.id, payload.handles, payload.message, payload.subject)
     res.status(201).json({ thread: presentThread(thread) })
   } catch (error) {
@@ -55,6 +60,7 @@ router.get('/threads/:threadId/messages', requireAuth, async (req, res, next) =>
 router.post('/threads/:threadId/messages', requireAuth, async (req, res, next) => {
   try {
     const payload = messageSchema.parse(req.body ?? {})
+    enforceModeration('message', [{ label: 'Message', text: payload.body }])
     const message = await appendMessage(req.params.threadId, req.authUser!.id, payload.body)
     res.status(201).json({ message: presentMessage(message) })
   } catch (error) {
