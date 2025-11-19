@@ -4,7 +4,6 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { z } from 'zod'
 import { requireAuth } from '../utils/authMiddleware'
-import { enforceModeration } from '../utils/moderation'
 import {
   createVideoRecord,
   deleteVideoRecord,
@@ -111,10 +110,6 @@ router.post('/videos', requireAuth, upload.single('file'), async (req, res, next
   try {
     const payload = uploadSchema.parse(req.body)
     const tags = parseTags(payload.tags)
-    enforceModeration('upload', [
-      { label: 'Title', text: payload.title },
-      { label: 'Description', text: payload.description ?? '' },
-    ])
 
     let videoUrl = payload.videoUrl?.trim() ?? ''
     let thumbnailUrl = payload.thumbnailUrl?.trim() ?? ''

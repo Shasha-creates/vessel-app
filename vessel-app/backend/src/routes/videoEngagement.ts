@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { requireAuth } from '../utils/authMiddleware'
-import { enforceModeration } from '../utils/moderation'
 import {
   addVideoComment,
   deleteVideoComment,
@@ -99,7 +98,6 @@ router.post('/:videoId/comments', requireAuth, async (req, res, next) => {
       return res.status(404).json({ message: 'Video not found.' })
     }
     const payload = commentSchema.parse(req.body)
-    enforceModeration('comment', [{ label: 'Comment', text: payload.body }])
     const comment = await addVideoComment(req.authUser!.id, videoId, payload.body)
     if (video.user.id !== req.authUser!.id) {
       await recordNotification({
