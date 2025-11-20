@@ -107,17 +107,17 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background: radial-gradient(circle at top, #1b1e2b, #0b0d16 65%);
+  background: radial-gradient(circle at top, #f8f4eb, #f2ebdf 65%);
 }
 
 .adminPanel {
   width: min(420px, 92vw);
-  background: rgba(9, 12, 24, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--profile-surface, #fffdf6);
+  border: 1px solid rgba(92, 82, 56, 0.15);
   border-radius: 28px;
   padding: clamp(1.75rem, 4vw, 2.5rem);
-  color: #f5f7ff;
-  box-shadow: 0 35px 65px -40px rgba(6, 8, 16, 0.9);
+  color: #20160e;
+  box-shadow: 0 35px 65px -40px rgba(50, 35, 20, 0.35);
 }
 
 .adminHeader {
@@ -151,21 +151,22 @@
   flex-direction: column;
   gap: 0.45rem;
   font-weight: 600;
-  color: rgba(245, 247, 255, 0.8);
+  color: rgba(32, 22, 14, 0.85);
 }
 
 .adminField input {
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(12, 16, 30, 0.8);
+  border: 1px solid rgba(92, 82, 56, 0.25);
+  background: rgba(248, 244, 235, 0.9);
   padding: 0.8rem 1rem;
   font-size: 0.95rem;
-  color: #fff;
+  color: #20160e;
 }
 
 .adminField input:focus {
-  outline: 2px solid rgba(108, 168, 255, 0.55);
+  outline: 2px solid rgba(108, 168, 255, 0.3);
 }
+
 
 .adminForm button {
   border: none;
@@ -174,8 +175,8 @@
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  background: linear-gradient(135deg, #6d8bff 0%, #74f1ff 100%);
-  color: #0c1324;
+  background: linear-gradient(135deg, #e2b954 0%, #f3cd6e 100%);
+  color: #4d3a1a;
   transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -200,10 +201,10 @@
 .adminHelper {
   margin-top: 1.75rem;
   font-size: 0.9rem;
-  color: rgba(245, 247, 255, 0.7);
+  color: rgba(32, 22, 14, 0.7);
 }
 
 .adminHelper a {
-  color: #72deff;
+  color: #5b8dff;
   font-weight: 600;
 }
