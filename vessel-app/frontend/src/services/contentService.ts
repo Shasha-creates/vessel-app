@@ -31,7 +31,7 @@ const NETWORK_FAILURE_RATE = 0.05
 const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com'])
 const MODERATION_CONTEXT_PROFILE = 'profile'
 const MODERATION_CONTEXT_UPLOAD = 'upload'
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+const API_BASE_URL = resolveApiBaseUrl()
 const VIDEO_FILE_EXTENSIONS = new Set(['.mp4', '.mov', '.webm', '.m4v', '.avi', '.mkv'])
 let remoteFeed: Video[] = []
 
@@ -380,10 +380,11 @@ function setStoredAuthToken(token: string | null): void {
 }
 
 function requireApiBaseUrl(): string {
-  if (!API_BASE_URL) {
+  const base = API_BASE_URL || resolveApiBaseUrl()
+  if (!base) {
     throw new Error('VITE_API_BASE_URL is not configured for this build.')
   }
-  return API_BASE_URL
+  return base
 }
 
 function resolveApiBaseUrl(): string {
