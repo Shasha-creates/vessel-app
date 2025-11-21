@@ -26,13 +26,8 @@ const NAV_HIDDEN_ROUTES = new Set([
 
 export default function App() {
   const location = useLocation()
-<<<<<<< HEAD
-  const hideNavRoutes = ["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password"]
-  const showChromeNav = !hideNavRoutes.includes(location.pathname)
-  const [unreadBadge, setUnreadBadge] = React.useState<string | null>(null)
-=======
   const showChromeNav = !NAV_HIDDEN_ROUTES.has(location.pathname)
->>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
+  const [unreadBadge, setUnreadBadge] = React.useState<string | null>(null)
   const [adminUnlocked, setAdminUnlocked] = React.useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(ADMIN_STORAGE_KEY) === "granted"

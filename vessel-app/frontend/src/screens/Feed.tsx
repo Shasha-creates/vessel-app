@@ -8,11 +8,7 @@ import type { Video } from '../services/contentService'
 import { Media } from '../media'
 import { SearchIcon } from '../shared/icons'
 
-<<<<<<< HEAD
-type TabKey = 'live' | 'music' | 'following' | 'friends' | 'forYou' | 'prayer'
-=======
-type TabKey = 'following' | 'forYou' | 'prayer'
->>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
+type TabKey = 'following' | 'friends' | 'forYou' | 'prayer'
 
 const tabs: Array<{
   id: TabKey
@@ -26,26 +22,19 @@ const tabs: Array<{
 ]
 
 export default function Feed() {
-<<<<<<< HEAD
   const location = useLocation()
   const initialTab: TabKey = location.pathname === '/friends' ? 'friends' : 'forYou'
   const [tab, setTab] = React.useState<TabKey>(initialTab)
-=======
-  const [tab, setTab] = React.useState<TabKey>('forYou')
   const [refreshToken, setRefreshToken] = React.useState(0)
->>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
   const navigate = useNavigate()
+
   const handleSearch = React.useCallback(() => {
     const input = window.prompt(
       'Search Godlyme for creators, testimonies, prayer topics, or verses.\nTip: start with "@" to jump directly to a creator handle.'
     )
-    if (!input) {
-      return
-    }
+    if (!input) return
     const trimmed = input.trim()
-    if (!trimmed) {
-      return
-    }
+    if (!trimmed) return
     if (trimmed.startsWith('@')) {
       const handle = trimmed.slice(1).trim()
       if (handle) {
@@ -56,9 +45,13 @@ export default function Feed() {
     navigate(`/home?q=${encodeURIComponent(trimmed)}`)
   }, [navigate])
 
-<<<<<<< HEAD
-  const activeTab = tabs.find((item) => item.id === tab) ?? tabs.find((item) => item.id === 'forYou') ?? tabs[0]
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[0]
   const isFriends = tab === 'friends'
+
+  const handleLogoRefresh = React.useCallback(() => {
+    setTab('forYou')
+    setRefreshToken((token) => token + 1)
+  }, [])
 
   React.useEffect(() => {
     if (location.pathname === '/friends') {
@@ -67,13 +60,6 @@ export default function Feed() {
       setTab('forYou')
     }
   }, [location.pathname, tab])
-=======
-  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[1]
-  const handleLogoRefresh = React.useCallback(() => {
-    setTab('forYou')
-    setRefreshToken((token) => token + 1)
-  }, [])
->>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
 
   return (
     <div className={styles.feed}>
@@ -112,11 +98,7 @@ export default function Feed() {
       </div>
 
       <div className={styles.scroller}>
-<<<<<<< HEAD
-        {tab === 'following' ? <Following /> : isFriends ? <Friends /> : <ForYou filter={activeTab.filter} />}
-=======
-        {tab === 'following' ? <Following /> : <ForYou filter={activeTab.filter} refreshKey={refreshToken} />}
->>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
+        {tab === 'following' ? <Following /> : isFriends ? <Friends /> : <ForYou filter={activeTab.filter} refreshKey={refreshToken} />}
       </div>
     </div>
   )

@@ -9,7 +9,7 @@ import {
   type SuggestedConnection,
   type NotificationSummary,
 } from '../services/contentService'
-import { formatRelativeTime } from '../utils/time'
+import { formatRelativeTime, formatDateTime } from '../utils/time'
 
 type TabKey = 'notifications' | 'messages' | 'suggested'
 
@@ -538,7 +538,7 @@ export default function Inbox() {
             const title = pickThreadTitle(thread, selfHandle)
             const preview = thread.lastMessage?.body ?? 'Start the conversation.'
             const lastTimestamp = thread.lastMessage?.createdAt ?? thread.updatedAt
-            const timeAgo = formatRelativeTime(lastTimestamp, true)
+            const timeAgo = `${formatDateTime(lastTimestamp)} • ${formatRelativeTime(lastTimestamp, true)}`
             const badgeLetter = (title.replace(/^@/, '') || 'c')[0]?.toUpperCase() ?? 'C'
             const isSending = sendingThreadId === thread.id
             const targetHandle = resolveThreadTargetHandle(thread, selfHandle)
@@ -600,13 +600,16 @@ export default function Inbox() {
                         ) : null}
                         {messages.map((message) => {
                           const fromMe = isMessageFromCurrentUser(message, selfHandle)
+                          const messageTimestamp = `${formatDateTime(message.createdAt)} • ${formatRelativeTime(
+                            message.createdAt
+                          )}`
                           return (
                             <div
                               key={message.id}
                               className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
                             >
                               <span>{message.body}</span>
-                              <span className={styles.bubbleMeta}>{formatRelativeTime(message.createdAt)}</span>
+                              <span className={styles.bubbleMeta}>{messageTimestamp}</span>
                             </div>
                           )
                         })}
