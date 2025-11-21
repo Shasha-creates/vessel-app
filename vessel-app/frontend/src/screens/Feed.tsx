@@ -55,10 +55,8 @@ export default function Feed() {
   React.useEffect(() => {
     if (location.pathname === '/friends') {
       setTab('friends')
-    } else {
-      if (tab === 'friends') {
-        setTab('forYou')
-      }
+    } else if (tab === 'friends') {
+      setTab('forYou')
     }
   }, [location.pathname, tab])
 

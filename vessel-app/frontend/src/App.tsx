@@ -13,6 +13,7 @@ import ResetPassword from "./pages/ResetPassword"
 import Settings from "./pages/Settings"
 import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
+import { contentService } from "./services/contentService"
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
 
@@ -20,6 +21,7 @@ export default function App() {
   const location = useLocation()
   const hideNavRoutes = ["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password"]
   const showChromeNav = !hideNavRoutes.includes(location.pathname)
+  const [unreadBadge, setUnreadBadge] = React.useState<string | null>(null)
   const [adminUnlocked, setAdminUnlocked] = React.useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(ADMIN_STORAGE_KEY) === "granted"
@@ -30,6 +32,30 @@ export default function App() {
     if (typeof window === "undefined") return
     setAdminUnlocked(window.localStorage.getItem(ADMIN_STORAGE_KEY) === "granted")
     setAdminChecked(true)
+  }, [])
+
+  React.useEffect(() => {
+    if (!contentService.isAuthenticated()) {
+      setUnreadBadge(null)
+      return
+    }
+    let cancelled = false
+    async function loadUnread() {
+      try {
+        const threads = await contentService.fetchMessageThreads()
+        if (cancelled) return
+        const unreadCount = threads.reduce((sum, thread) => sum + (thread.unreadCount || 0), 0)
+        setUnreadBadge(unreadCount > 0 ? String(unreadCount) : null)
+      } catch {
+        if (!cancelled) return
+      }
+    }
+    loadUnread()
+    const unsubscribe = contentService.subscribe(loadUnread)
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
   }, [])
 
   const handleUnlock = React.useCallback(() => {
@@ -84,16 +110,6 @@ export default function App() {
           </NavLink>
 
           <NavLink
-            to="/friends"
-            className={({ isActive }) =>
-              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
-            }
-          >
-            <span className={styles.bottomIconCircle}>F</span>
-            <span>Friends</span>
-          </NavLink>
-
-          <NavLink
             to="/upload"
             className={({ isActive }) =>
               isActive
@@ -106,15 +122,15 @@ export default function App() {
 
           <NavLink
             to="/inbox"
-            className={({ isActive }) =>
-              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
-            }
-          >
-            <span className={styles.bottomIconCircle}>I</span>
-            <span className={styles.badgedLabel}>
-              Inbox <span className={styles.badge}>9</span>
-            </span>
-          </NavLink>
+          className={({ isActive }) =>
+            isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
+          }
+        >
+          <span className={styles.bottomIconCircle}>I</span>
+          <span className={styles.badgedLabel}>
+            Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
+          </span>
+        </NavLink>
 
           <NavLink
             to="/profile/me"
