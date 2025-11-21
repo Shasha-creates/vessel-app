@@ -6,11 +6,9 @@ import { formatRelativeTime } from '../utils/time'
 import { Media } from '../media'
 import styles from './Home.module.css'
 
-type TabId = 'forYou' | 'following' | 'friends' | 'live' | 'music' | 'prayer'
+type TabId = 'forYou' | 'following' | 'friends' | 'prayer'
 
 const TABS: Array<{ id: TabId; label: string }> = [
-  { id: 'live', label: 'Live' },
-  { id: 'music', label: 'Music' },
   { id: 'following', label: 'Following' },
   { id: 'friends', label: 'Friends' },
   { id: 'forYou', label: 'For You' },

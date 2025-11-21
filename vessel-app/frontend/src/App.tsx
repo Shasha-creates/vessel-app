@@ -15,10 +15,17 @@ import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
+const NAV_HIDDEN_ROUTES = new Set([
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+])
 
 export default function App() {
   const location = useLocation()
-  const showChromeNav = location.pathname !== "/"
+  const showChromeNav = !NAV_HIDDEN_ROUTES.has(location.pathname)
   const [adminUnlocked, setAdminUnlocked] = React.useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(ADMIN_STORAGE_KEY) === "granted"
@@ -79,6 +86,16 @@ export default function App() {
           >
             <span className={styles.bottomIconCircle}>D</span>
             <span>Discover</span>
+          </NavLink>
+
+          <NavLink
+            to="/home"
+            className={({ isActive }) =>
+              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
+            }
+          >
+            <span className={styles.bottomIconCircle}>F</span>
+            <span>Friends</span>
           </NavLink>
 
           <NavLink
