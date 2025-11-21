@@ -87,20 +87,21 @@
   flex: 0 0 auto;
 }
 
-.brandGlyphWrap {
+.brandGlyphButton {
   width: 48px;
   height: 48px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.25);
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
 }
 
 .brandGlyph {
-  width: 70%;
-  height: 70%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
 }
@@ -133,6 +134,7 @@
 
 .tabRail {
   display: flex;
+<<<<<<< HEAD
   gap: clamp(0.4rem, 1vw, 0.9rem);
   padding: 0.15rem 0;
   pointer-events: auto;
@@ -145,6 +147,12 @@
 
 .tabRail::-webkit-scrollbar {
   display: none;
+=======
+  gap: clamp(1rem, 2vw, 2.5rem);
+  padding: 0;
+  pointer-events: auto;
+  justify-content: center;
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
 }
 
 .tabButton,
@@ -157,7 +165,11 @@
   padding: 0.35rem 0.1rem;
   cursor: pointer;
   transition: color 0.18s ease;
+<<<<<<< HEAD
   min-width: 64px;
+=======
+  min-width: 92px;
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
   text-align: center;
   white-space: nowrap;
   text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);

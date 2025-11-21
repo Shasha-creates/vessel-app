@@ -54,6 +54,7 @@ export default function VideoCard({
   }, [video.videoUrl])
   React.useEffect(() => {
     setExpandDescription(false)
+    setMuted(false)
   }, [video.id])
   const descriptionText = video.description ?? ""
   const shouldClampDescription = descriptionText.length > DESCRIPTION_PREVIEW_LIMIT
@@ -87,8 +88,12 @@ export default function VideoCard({
     }
   }, [isActive, muted])
 
+  const toggleMute = React.useCallback(() => {
+    setMuted((value) => !value)
+  }, [])
+
   const soundLabel = "Sound"
-  const soundCount = "On"
+  const soundCount = muted || !isActive ? "Off" : "On"
 
   const actions: Array<{
     key: string
@@ -97,13 +102,16 @@ export default function VideoCard({
     label: string
     onClick?: (clip: Video) => void
     active?: boolean
+    ariaPressed?: boolean
   }> = [
     {
       key: "sound",
-      icon: <VolumeIcon muted={false} width={22} height={22} />,
+      icon: <VolumeIcon muted={muted || !isActive} width={22} height={22} />,
       count: soundCount,
       label: soundLabel,
-      active: true,
+      onClick: () => toggleMute(),
+      active: !muted && isActive,
+      ariaPressed: !muted && isActive,
     },
     { key: "like", icon: <ThumbIcon width={22} height={22} />, count: likes, label: "Likes", onClick: onLike },
     {
@@ -216,6 +224,7 @@ export default function VideoCard({
             className={`${styles.actionButton} ${action.active ? styles.actionButtonActive : ""}`}
             onClick={() => action.onClick?.(video)}
             aria-label={`${action.label} for ${video.title}`}
+            aria-pressed={action.ariaPressed}
           >
             <span className={styles.actionIcon} aria-hidden="true">
               {action.icon}

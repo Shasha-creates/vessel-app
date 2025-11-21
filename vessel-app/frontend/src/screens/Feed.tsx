@@ -8,15 +8,17 @@ import type { Video } from '../services/contentService'
 import { Media } from '../media'
 import { SearchIcon } from '../shared/icons'
 
+<<<<<<< HEAD
 type TabKey = 'live' | 'music' | 'following' | 'friends' | 'forYou' | 'prayer'
+=======
+type TabKey = 'following' | 'forYou' | 'prayer'
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
 
 const tabs: Array<{
   id: TabKey
   label: string
   filter?: (clip: Video) => boolean
 }> = [
-  { id: 'live', label: 'Live', filter: (clip) => clip.featured ?? false },
-  { id: 'music', label: 'Music', filter: () => false },
   { id: 'following', label: 'Following' },
   { id: 'friends', label: 'Friends' },
   { id: 'forYou', label: 'For You' },
@@ -24,9 +26,14 @@ const tabs: Array<{
 ]
 
 export default function Feed() {
+<<<<<<< HEAD
   const location = useLocation()
   const initialTab: TabKey = location.pathname === '/friends' ? 'friends' : 'forYou'
   const [tab, setTab] = React.useState<TabKey>(initialTab)
+=======
+  const [tab, setTab] = React.useState<TabKey>('forYou')
+  const [refreshToken, setRefreshToken] = React.useState(0)
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
   const navigate = useNavigate()
   const handleSearch = React.useCallback(() => {
     const input = window.prompt(
@@ -49,6 +56,7 @@ export default function Feed() {
     navigate(`/home?q=${encodeURIComponent(trimmed)}`)
   }, [navigate])
 
+<<<<<<< HEAD
   const activeTab = tabs.find((item) => item.id === tab) ?? tabs.find((item) => item.id === 'forYou') ?? tabs[0]
   const isFriends = tab === 'friends'
 
@@ -59,6 +67,13 @@ export default function Feed() {
       setTab('forYou')
     }
   }, [location.pathname, tab])
+=======
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[1]
+  const handleLogoRefresh = React.useCallback(() => {
+    setTab('forYou')
+    setRefreshToken((token) => token + 1)
+  }, [])
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
 
   return (
     <div className={styles.feed}>
@@ -66,9 +81,14 @@ export default function Feed() {
         <div className={styles.topBar}>
           <div className={styles.tabHeader}>
             <div className={styles.leftTray}>
-              <div className={styles.brandGlyphWrap}>
+              <button
+                type="button"
+                className={styles.brandGlyphButton}
+                aria-label="Refresh For You feed"
+                onClick={handleLogoRefresh}
+              >
                 <img src={Media.icons.logo} alt="Godlyme" className={styles.brandGlyph} />
-              </div>
+              </button>
               <div className={styles.tabRail}>
                 {tabs.map((item) => (
                   <button
@@ -92,7 +112,11 @@ export default function Feed() {
       </div>
 
       <div className={styles.scroller}>
+<<<<<<< HEAD
         {tab === 'following' ? <Following /> : isFriends ? <Friends /> : <ForYou filter={activeTab.filter} />}
+=======
+        {tab === 'following' ? <Following /> : <ForYou filter={activeTab.filter} refreshKey={refreshToken} />}
+>>>>>>> 3c67263c8a15b3775da6bdd15e6fbc58fd100a88
       </div>
     </div>
   )

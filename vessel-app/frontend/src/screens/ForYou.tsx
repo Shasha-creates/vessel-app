@@ -7,6 +7,7 @@ import styles from "./ForYou.module.css"
 
 type Props = {
   filter?: (clip: Video) => boolean
+  refreshKey?: number
 }
 
 const normalizeProfileTarget = (video: Video): string => {
@@ -22,7 +23,7 @@ const normalizeProfileTarget = (video: Video): string => {
 
 const resolveUserId = (clip: Video): string => clip.user.handle || clip.user.id || normalizeProfileTarget(clip)
 
-export default function ForYou({ filter }: Props) {
+export default function ForYou({ filter, refreshKey }: Props) {
   const [clips, setClips] = React.useState<Video[]>([])
   const [loading, setLoading] = React.useState(true)
   const [index, setIndex] = React.useState(0)
@@ -55,6 +56,34 @@ export default function ForYou({ filter }: Props) {
       }
     }
   }, [])
+
+  React.useEffect(() => {
+    if (typeof refreshKey === 'undefined') {
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    contentService
+      .fetchForYouFeed()
+      .then((data) => {
+        if (cancelled) return
+        setClips(data)
+        setLoading(false)
+        setIndex(0)
+        const node = trackRef.current
+        if (node) {
+          node.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [refreshKey])
 
   const visibleClips = React.useMemo(() => {
     if (!filter) return clips
