@@ -7,6 +7,7 @@ import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon
 type Props = {
   video: Video
   isBookmarked?: boolean
+  isLiked?: boolean
   isFollowing?: boolean
   isActive?: boolean
   onLike?: (clip: Video) => void
@@ -22,6 +23,7 @@ type Props = {
 export default function VideoCard({
   video,
   isBookmarked = false,
+  isLiked = false,
   isFollowing = false,
   isActive = false,
   onLike,
@@ -113,7 +115,15 @@ export default function VideoCard({
       active: !muted && isActive,
       ariaPressed: !muted && isActive,
     },
-    { key: "like", icon: <ThumbIcon width={22} height={22} />, count: likes, label: "Likes", onClick: onLike },
+    {
+      key: "like",
+      icon: <ThumbIcon width={22} height={22} />,
+      count: likes,
+      label: isLiked ? "Liked" : "Likes",
+      onClick: onLike,
+      active: isLiked,
+      ariaPressed: isLiked,
+    },
     {
       key: "comment",
       icon: <CommentIcon width={22} height={22} />,

@@ -116,16 +116,6 @@ export default function App() {
           </NavLink>
 
           <NavLink
-            to="/home"
-            className={({ isActive }) =>
-              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
-            }
-          >
-            <span className={styles.bottomIconCircle}>F</span>
-            <span>Friends</span>
-          </NavLink>
-
-          <NavLink
             to="/upload"
             className={({ isActive }) =>
               isActive

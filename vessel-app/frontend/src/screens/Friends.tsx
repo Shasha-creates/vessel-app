@@ -2,6 +2,7 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import VideoCard from '../shared/VideoCard'
 import { contentService, type Video, type ApiUser } from '../services/contentService'
+import { formatLikes } from '../services/mockData'
 import { CommentSheet, DonateSheet } from '../shared/VideoSheets'
 import styles from './Following.module.css'
 
@@ -172,7 +173,12 @@ export default function Friends() {
 
   const handleLike = React.useCallback(async (clipId: string) => {
     try {
-      await contentService.recordLike(clipId)
+      const result = await contentService.recordLike(clipId)
+      setClips((current) =>
+        current.map((clip) =>
+          clip.id === clipId ? { ...clip, likes: result.count, likesDisplay: formatLikes(result.count) } : clip
+        )
+      )
     } catch (err) {
       const message = err instanceof Error ? err.message : 'We could not register that like. Please try again.'
       window.alert(message)
@@ -235,6 +241,7 @@ export default function Friends() {
                   followingCreator={isFollowingCreator}
                   followBusy={busy}
                   active={isActive}
+                  isLiked={contentService.isLiked(clip.id)}
                 />
               </section>
             )
