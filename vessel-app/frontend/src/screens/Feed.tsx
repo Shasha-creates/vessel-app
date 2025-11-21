@@ -1,13 +1,14 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import ForYou from './ForYou'
 import Following from './Following'
+import Friends from './Friends'
 import styles from './Feed.module.css'
 import type { Video } from '../services/contentService'
 import { Media } from '../media'
-import { HeartIcon, HomeIcon, MessageIcon, PlusIcon, SearchIcon, UserIcon } from '../shared/icons'
+import { SearchIcon } from '../shared/icons'
 
-type TabKey = 'live' | 'music' | 'following' | 'forYou' | 'prayer'
+type TabKey = 'live' | 'music' | 'following' | 'friends' | 'forYou' | 'prayer'
 
 const tabs: Array<{
   id: TabKey
@@ -17,28 +18,15 @@ const tabs: Array<{
   { id: 'live', label: 'Live', filter: (clip) => clip.featured ?? false },
   { id: 'music', label: 'Music', filter: () => false },
   { id: 'following', label: 'Following' },
+  { id: 'friends', label: 'Friends' },
   { id: 'forYou', label: 'For You' },
   { id: 'prayer', label: 'Prayer', filter: () => false },
 ]
 
-const bottomNavItems: Array<{
-  id: string
-  label: string
-  icon: React.ReactNode
-  to: string
-  badge?: string
-  variant?: 'upload'
-}> = [
-  { id: 'home', label: 'Home', icon: <HomeIcon width={18} height={18} />, to: '/' },
-  { id: 'friends', label: 'Friends', icon: <HeartIcon width={18} height={18} />, to: '/home' },
-  { id: 'upload', label: 'Upload', icon: <PlusIcon width={18} height={18} />, to: '/upload', variant: 'upload' },
-  { id: 'inbox', label: 'Inbox', icon: <MessageIcon width={18} height={18} />, to: '/inbox', badge: '9' },
-  { id: 'profile', label: 'Profile', icon: <UserIcon width={18} height={18} />, to: '/profile/me' },
-]
-
 export default function Feed() {
-  const [tab, setTab] = React.useState<TabKey>('forYou')
-  const [activeNav, setActiveNav] = React.useState('home')
+  const location = useLocation()
+  const initialTab: TabKey = location.pathname === '/friends' ? 'friends' : 'forYou'
+  const [tab, setTab] = React.useState<TabKey>(initialTab)
   const navigate = useNavigate()
   const handleSearch = React.useCallback(() => {
     const input = window.prompt(
@@ -61,7 +49,18 @@ export default function Feed() {
     navigate(`/home?q=${encodeURIComponent(trimmed)}`)
   }, [navigate])
 
-  const activeTab = tabs.find((item) => item.id === tab) ?? tabs[3]
+  const activeTab = tabs.find((item) => item.id === tab) ?? tabs.find((item) => item.id === 'forYou') ?? tabs[0]
+  const isFriends = tab === 'friends'
+
+  React.useEffect(() => {
+    if (location.pathname === '/friends') {
+      setTab('friends')
+    } else {
+      if (tab === 'friends') {
+        setTab('forYou')
+      }
+    }
+  }, [location.pathname, tab])
 
   return (
     <div className={styles.feed}>
@@ -95,40 +94,7 @@ export default function Feed() {
       </div>
 
       <div className={styles.scroller}>
-        {tab === 'following' ? <Following /> : <ForYou filter={activeTab.filter} />}
-        <div className={styles.bottomChrome}>
-          {bottomNavItems.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className={`${styles.bottomButton} ${activeNav === item.id ? styles.bottomButtonActive : ''} ${
-                item.variant === 'upload' ? styles.bottomButtonUpload : ''
-              }`}
-              aria-label={item.label}
-              onClick={() => {
-                setActiveNav(item.id)
-                navigate(item.to)
-              }}
-            >
-              <span
-                className={`${styles.bottomIcon} ${item.variant === 'upload' ? styles.bottomIconUpload : ''}`}
-                aria-hidden="true"
-              >
-                {item.icon}
-              </span>
-              {item.variant === 'upload' ? null : <span className={styles.bottomLabel}>{item.label}</span>}
-              {item.badge ? <span className={styles.bottomBadge}>{item.badge}</span> : null}
-              {item.variant === 'upload' ? null : (
-                <span
-                  aria-hidden="true"
-                  className={
-                    activeNav === item.id ? styles.bottomIndicatorActive : styles.bottomIndicator
-                  }
-                />
-              )}
-            </button>
-          ))}
-        </div>
+        {tab === 'following' ? <Following /> : isFriends ? <Friends /> : <ForYou filter={activeTab.filter} />}
       </div>
     </div>
   )

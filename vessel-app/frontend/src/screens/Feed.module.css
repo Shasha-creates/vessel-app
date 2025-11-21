@@ -49,11 +49,12 @@
 
 .tabHeader {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 1rem;
+  justify-content: space-between;
+  gap: clamp(0.5rem, 2vw, 1rem);
   pointer-events: auto;
-  width: min(960px, 100%);
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -62,8 +63,28 @@
   align-items: center;
   gap: clamp(0.6rem, 2vw, 1.2rem);
   pointer-events: auto;
-  flex: 1;
-  justify-content: center;
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
+.navGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  border-radius: 18px;
+  padding: 0.4rem 0.8rem;
+}
+
+#leftNav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#rightNav {
+  flex: 0 0 auto;
 }
 
 .brandGlyphWrap {
@@ -113,8 +134,17 @@
 .tabRail {
   display: flex;
   gap: clamp(0.4rem, 1vw, 0.9rem);
-  padding: 0;
+  padding: 0.15rem 0;
   pointer-events: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tabRail::-webkit-scrollbar {
+  display: none;
 }
 
 .tabButton,
@@ -127,8 +157,9 @@
   padding: 0.35rem 0.1rem;
   cursor: pointer;
   transition: color 0.18s ease;
-  min-width: 70px;
+  min-width: 64px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .tabButtonActive {

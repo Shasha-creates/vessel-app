@@ -18,7 +18,8 @@ const ADMIN_STORAGE_KEY = "vessel_admin_access"
 
 export default function App() {
   const location = useLocation()
-  const showChromeNav = location.pathname !== "/"
+  const hideNavRoutes = ["/login", "/signup", "/verify-email", "/forgot-password", "/reset-password"]
+  const showChromeNav = !hideNavRoutes.includes(location.pathname)
   const [adminUnlocked, setAdminUnlocked] = React.useState(() => {
     if (typeof window === "undefined") return false
     return window.localStorage.getItem(ADMIN_STORAGE_KEY) === "granted"
@@ -55,6 +56,7 @@ export default function App() {
       <main className={styles.main}>
         <Routes>
           <Route path="/" element={<Feed />} />
+          <Route path="/friends" element={<Feed />} />
           <Route path="/home" element={<Home />} />
           <Route path="/watch/:id" element={<Watch />} />
           <Route path="/upload" element={<Upload />} />
@@ -79,6 +81,16 @@ export default function App() {
           >
             <span className={styles.bottomIconCircle}>D</span>
             <span>Discover</span>
+          </NavLink>
+
+          <NavLink
+            to="/friends"
+            className={({ isActive }) =>
+              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
+            }
+          >
+            <span className={styles.bottomIconCircle}>F</span>
+            <span>Friends</span>
           </NavLink>
 
           <NavLink

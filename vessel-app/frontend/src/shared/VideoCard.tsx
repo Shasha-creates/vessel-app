@@ -1,6 +1,6 @@
 import React from "react"
 import { formatLikes } from "../services/mockData"
-import { type Video, THUMBNAIL_PLACEHOLDER } from "../services/contentService"
+import { type Video, THUMBNAIL_PLACEHOLDER, VIDEO_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
 import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon } from "./icons"
 
@@ -41,6 +41,7 @@ export default function VideoCard({
     baseHandle.replace(/^@/, '').replace(/\s+/g, '').toLowerCase() || slugify(video.user.name)
   const handle = `@${normalizedHandle}`
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
+  const [videoSrc, setVideoSrc] = React.useState(() => safeVideoSrc(video.videoUrl))
   const [muted, setMuted] = React.useState(false)
   const [expandDescription, setExpandDescription] = React.useState(false)
   const DESCRIPTION_PREVIEW_LIMIT = 20
@@ -48,6 +49,9 @@ export default function VideoCard({
     () => resolvePosterUrl(video.thumbnailUrl, video.videoUrl),
     [video.thumbnailUrl, video.videoUrl]
   )
+  React.useEffect(() => {
+    setVideoSrc(safeVideoSrc(video.videoUrl))
+  }, [video.videoUrl])
   React.useEffect(() => {
     setExpandDescription(false)
   }, [video.id])
@@ -138,12 +142,13 @@ export default function VideoCard({
       <video
         ref={videoRef}
         className={styles.video}
-        src={video.videoUrl}
+        src={videoSrc}
         poster={posterUrl}
         autoPlay
         loop
         muted={muted || !isActive}
         playsInline
+        onError={() => setVideoSrc((current) => (current === VIDEO_PLACEHOLDER ? current : VIDEO_PLACEHOLDER))}
       />
       <div className={styles.overlay}>
         <div className={styles.topMeta}>
@@ -258,6 +263,14 @@ function resolvePosterUrl(thumbnailUrl?: string, videoUrl?: string) {
     return fallback
   }
   return THUMBNAIL_PLACEHOLDER
+}
+
+function safeVideoSrc(candidate?: string) {
+  const trimmed = (candidate || "").trim()
+  if (trimmed && isVideoAsset(trimmed)) {
+    return trimmed
+  }
+  return VIDEO_PLACEHOLDER
 }
 
 function isVideoAsset(url: string) {

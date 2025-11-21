@@ -25,6 +25,7 @@ const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
 const DEFAULT_VIDEO_PLACEHOLDER = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 const DEFAULT_THUMB_PLACEHOLDER = 'https://placehold.co/640x360?text=Vessel'
 export const THUMBNAIL_PLACEHOLDER = DEFAULT_THUMB_PLACEHOLDER
+export const VIDEO_PLACEHOLDER = DEFAULT_VIDEO_PLACEHOLDER
 const NETWORK_DELAY_MIN = 220
 const NETWORK_DELAY_MAX = 520
 const NETWORK_FAILURE_RATE = 0.05
@@ -1083,6 +1084,13 @@ function normalizeHandleForApi(value: string): string {
 
 function mapApiVideo(video: ApiFeedVideo): Video {
   const likeCount = video.stats?.likes ?? 0
+  const chosenVideoUrl = (() => {
+    const primary = (video.videoUrl || '').trim()
+    if (isLikelyVideoAsset(primary)) return primary
+    const thumbAsVideo = (video.thumbnailUrl || '').trim()
+    if (isLikelyVideoAsset(thumbAsVideo)) return thumbAsVideo
+    return DEFAULT_VIDEO_PLACEHOLDER
+  })()
   return {
     id: video.id,
     title: video.title,
@@ -1095,7 +1103,7 @@ function mapApiVideo(video: ApiFeedVideo): Video {
       churchHome: video.user.church ?? undefined,
       avatar: video.user.photoUrl ?? undefined,
     },
-    videoUrl: video.videoUrl,
+    videoUrl: chosenVideoUrl,
     thumbnailUrl: resolveThumbnailUrl(video.thumbnailUrl, video.videoUrl),
     category: (video.category as ContentCategory) || 'testimony',
     tags: video.tags ?? [],
