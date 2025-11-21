@@ -1,3 +1,5 @@
+import moderationConfig from '../../../shared/moderationTerms.json'
+
 type ModerationField = {
   label: string
   text: string
@@ -57,59 +59,11 @@ type TermRule = {
   terms: string[]
 }
 
-const profanityTerms = [
-  'fuck',
-  'shit',
-  'bullshit',
-  'bitch',
-  'slut',
-  'whore',
-  'dick',
-  'pussy',
-  'asshole',
-  'motherfucker',
-  'bloody hell',
-  'screw you',
-  'damn',
-  'hell no',
-  'hoe',
-  'thot',
-  'mf',
-  'fkn',
-  'fml',
-]
+type ModerationConfig = {
+  rules: TermRule[]
+}
 
-const spanishPortuguese = [
-  'puta',
-  'puto',
-  'mierda',
-  'pendejo',
-  'cabron',
-  'chingar',
-  'coño',
-  'porra',
-  'caralho',
-  'merda',
-  'safado',
-  'piranha',
-]
-
-const french = ['merde', 'putain', 'salope', 'connard', 'encule']
-
-const afrikaansAndZulu = ['bliksem', 'poes', 'doos', 'naai', 'sukkel', 'moer', 'voetsek', 'inyoko', 'hamba uyofa', 'fat poes']
-
-const hateSpeech = ['nigger', 'nigga', 'faggot', 'retard', 'spic', 'chink', 'coon', 'wetback', 'kafir']
-
-const violence = ['kill yourself', 'kys', 'hang yourself', 'commit suicide', 'die in hell', 'burn in hell', 'i will kill you']
-
-const TERM_RULES: TermRule[] = [
-  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: profanityTerms },
-  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: spanishPortuguese },
-  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: french },
-  { label: 'profanity', reason: 'Profanity is not allowed on Vessel.', terms: afrikaansAndZulu },
-  { label: 'hate', reason: 'Hate speech is never allowed.', terms: hateSpeech },
-  { label: 'violence', reason: 'Threats or encouragement of self-harm/violence are not allowed.', terms: violence },
-]
+const TERM_RULES: TermRule[] = (moderationConfig as ModerationConfig).rules
 
 type CompiledRule = {
   label: string

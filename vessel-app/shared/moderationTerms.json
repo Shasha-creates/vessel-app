@@ -1,0 +1,86 @@
+{
+  "rules": [
+    {
+      "label": "profanity",
+      "reason": "Profanity is not allowed on Vessel.",
+      "terms": [
+        "fuck",
+        "shit",
+        "bullshit",
+        "bitch",
+        "slut",
+        "whore",
+        "dick",
+        "pussy",
+        "asshole",
+        "motherfucker",
+        "bloody hell",
+        "screw you",
+        "damn",
+        "hell no",
+        "hoe",
+        "thot",
+        "mf",
+        "fkn",
+        "fml"
+      ]
+    },
+    {
+      "label": "profanity",
+      "reason": "Profanity is not allowed on Vessel.",
+      "terms": [
+        "puta",
+        "puto",
+        "mierda",
+        "pendejo",
+        "cabron",
+        "chingar",
+        "co\u00f1o",
+        "porra",
+        "caralho",
+        "merda",
+        "safado",
+        "piranha"
+      ]
+    },
+    {
+      "label": "profanity",
+      "reason": "Profanity is not allowed on Vessel.",
+      "terms": ["merde", "putain", "salope", "connard", "encule"]
+    },
+    {
+      "label": "profanity",
+      "reason": "Profanity is not allowed on Vessel.",
+      "terms": [
+        "bliksem",
+        "poes",
+        "doos",
+        "naai",
+        "sukkel",
+        "moer",
+        "voetsek",
+        "inyoko",
+        "hamba uyofa",
+        "fat poes"
+      ]
+    },
+    {
+      "label": "hate",
+      "reason": "Hate speech is never allowed.",
+      "terms": ["nigger", "nigga", "faggot", "retard", "spic", "chink", "coon", "wetback", "kafir"]
+    },
+    {
+      "label": "violence",
+      "reason": "Threats or encouragement of self-harm/violence are not allowed.",
+      "terms": [
+        "kill yourself",
+        "kys",
+        "hang yourself",
+        "commit suicide",
+        "die in hell",
+        "burn in hell",
+        "i will kill you"
+      ]
+    }
+  ]
+}

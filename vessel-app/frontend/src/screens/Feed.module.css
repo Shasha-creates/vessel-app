@@ -50,10 +50,11 @@
 .tabHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 1rem;
   pointer-events: auto;
-  width: 100%;
+  width: min(960px, 100%);
+  margin: 0 auto;
 }
 
 .leftTray {
@@ -61,17 +62,32 @@
   align-items: center;
   gap: clamp(0.6rem, 2vw, 1.2rem);
   pointer-events: auto;
+  flex: 1;
+  justify-content: center;
+}
+
+.brandGlyphWrap {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 14px rgba(0, 0, 0, 0.25);
 }
 
 .brandGlyph {
-  height: 26px;
-  width: auto;
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
   filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.4));
 }
 
 .statusIcons {
   display: inline-flex;
   gap: 0.75rem;
+  margin-left: auto;
 }
 
 .statusIcons button {

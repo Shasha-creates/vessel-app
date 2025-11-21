@@ -69,7 +69,9 @@ export default function Feed() {
         <div className={styles.topBar}>
           <div className={styles.tabHeader}>
             <div className={styles.leftTray}>
-              <img src={Media.icons.logo} alt="Godlyme" className={styles.brandGlyph} />
+              <div className={styles.brandGlyphWrap}>
+                <img src={Media.icons.logo} alt="Godlyme" className={styles.brandGlyph} />
+              </div>
               <div className={styles.tabRail}>
                 {tabs.map((item) => (
                   <button

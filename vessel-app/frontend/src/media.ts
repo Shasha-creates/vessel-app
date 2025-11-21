@@ -1,5 +1,5 @@
 export const Media = {
   icons: {
-    logo: '/media/godlyme-logo.svg',
+    logo: '/media/Godlyme.png',
   },
 } as const;

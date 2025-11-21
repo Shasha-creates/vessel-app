@@ -1,11 +1,21 @@
 import React from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { contentService, type Video, type VideoComment } from '../services/contentService'
+import { contentService, type Video, type VideoComment, type ApiUser } from '../services/contentService'
 import { formatLikes } from '../services/mockData'
 import { formatRelativeTime } from '../utils/time'
+import { Media } from '../media'
 import styles from './Home.module.css'
 
-const TABS = ['Live', 'Music', 'Following', 'For You', 'Prayer']
+type TabId = 'forYou' | 'following' | 'friends' | 'live' | 'music' | 'prayer'
+
+const TABS: Array<{ id: TabId; label: string }> = [
+  { id: 'live', label: 'Live' },
+  { id: 'music', label: 'Music' },
+  { id: 'following', label: 'Following' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'forYou', label: 'For You' },
+  { id: 'prayer', label: 'Prayer' },
+]
 const FALLBACK_BACKDROP =
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80'
 
@@ -21,20 +31,50 @@ export default function Home() {
   const [isCommentsOpen, setIsCommentsOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState<TabId>('forYou')
 
   React.useEffect(() => {
     let cancelled = false
     async function loadFeed() {
+      setLoading(true)
+      setError(null)
+
+      const requireAuth = activeTab === 'following' || activeTab === 'friends'
+      if (requireAuth && !contentService.isAuthenticated()) {
+        setFeatured([])
+        setError('Sign in to view this feed.')
+        setLoading(false)
+        return
+      }
+
       try {
-        const feed = await contentService.fetchForYouFeed()
+        let feed: Video[] = []
+        if (activeTab === 'following') {
+          feed = await contentService.fetchFollowingFeed()
+        } else if (activeTab === 'friends') {
+          const [followingList, followerList] = await Promise.all([
+            contentService.fetchFollowingProfiles().catch(() => []),
+            contentService.fetchFollowerProfiles().catch(() => []),
+          ])
+          const mutualAccountIds = buildMutualAccountSet(followingList, followerList)
+          const mutualHandles = buildMutualHandleSet(followingList, followerList)
+          const baseFeed = await contentService.fetchFollowingFeed()
+          feed = baseFeed.filter((clip) => {
+            const id = normalizeValue(clip.user.accountId || clip.user.id)
+            const handle = normalizeHandle(clip.user.handle || clip.user.id)
+            return (id && mutualAccountIds.has(id)) || (handle && mutualHandles.has(handle))
+          })
+        } else {
+          feed = await contentService.fetchForYouFeed()
+        }
         if (!cancelled) {
           setFeatured(feed)
-          setError(null)
         }
       } catch (err) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : 'Unable to load the featured feed.'
+          const message = err instanceof Error ? err.message : 'Unable to load this feed.'
           setError(message)
+          setFeatured([])
         }
       } finally {
         if (!cancelled) {
@@ -42,11 +82,11 @@ export default function Home() {
         }
       }
     }
-    loadFeed()
+    void loadFeed()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [activeTab])
 
   const heroVideo = featured[0] ?? null
   const heroBackground = heroVideo?.thumbnailUrl || FALLBACK_BACKDROP
@@ -112,16 +152,22 @@ export default function Home() {
 
       <div className={styles.screen}>
         <div className={styles.headerRow}>
-          <div className={styles.tabGroup}>
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                className={`${styles.tab} ${tab === 'For You' ? styles.tabActive : ''}`}
-              >
-                {tab}
-              </button>
-            ))}
+          <div className={styles.tabHeader}>
+            <div className={styles.tabLogo}>
+              <img src={Media.icons.logo} alt="Godlyme" />
+            </div>
+            <div className={styles.tabGroup}>
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
           <button
             type="button"
@@ -272,4 +318,37 @@ export default function Home() {
       ) : null}
     </div>
   )
+}
+
+function normalizeValue(value?: string | null): string {
+  return (value || '').trim().toLowerCase()
+}
+
+function normalizeHandle(value?: string | null): string {
+  if (!value) return ''
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
+function buildMutualAccountSet(following: ApiUser[], followers: ApiUser[]): Set<string> {
+  const followerIds = new Set(followers.map((user) => normalizeValue(user.id)))
+  const intersection = new Set<string>()
+  following.forEach((user) => {
+    const normalized = normalizeValue(user.id)
+    if (normalized && followerIds.has(normalized)) {
+      intersection.add(normalized)
+    }
+  })
+  return intersection
+}
+
+function buildMutualHandleSet(following: ApiUser[], followers: ApiUser[]): Set<string> {
+  const followerHandles = new Set(followers.map((user) => normalizeHandle(user.handle || user.id)))
+  const intersection = new Set<string>()
+  following.forEach((user) => {
+    const normalized = normalizeHandle(user.handle || user.id)
+    if (normalized && followerHandles.has(normalized)) {
+      intersection.add(normalized)
+    }
+  })
+  return intersection
 }
