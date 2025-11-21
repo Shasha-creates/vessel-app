@@ -1,5 +1,5 @@
 import React from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import styles from './Inbox.module.css'
 import { AuthOverlay, type AuthMode } from './Settings'
 import {
@@ -21,6 +21,7 @@ const quickReplyOptions = ['Thanks so much!', "Let's schedule something.", 'Appr
 
 export default function Inbox() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const [activeProfile, setActiveProfile] = React.useState(() => contentService.getActiveProfile())
   const selfHandle = normalizeHandle(activeProfile.id || '')
   const [tab, setTab] = React.useState<TabKey>('notifications')
@@ -28,6 +29,7 @@ export default function Inbox() {
   const [threadsLoading, setThreadsLoading] = React.useState(true)
   const [threadsError, setThreadsError] = React.useState<string | null>(null)
   const [activeConversationId, setActiveConversationId] = React.useState<string | null>(null)
+  const [expandedThreadId, setExpandedThreadId] = React.useState<string | null>(null)
   const [messages, setMessages] = React.useState<ThreadMessage[]>([])
   const [messagesBusy, setMessagesBusy] = React.useState(false)
   const [messageError, setMessageError] = React.useState<string | null>(null)
@@ -48,6 +50,7 @@ export default function Inbox() {
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
   const isAuthenticated = contentService.isAuthenticated()
+  const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
   React.useEffect(() => {
     const unsubscribe = contentService.subscribe(() => {
@@ -216,12 +219,61 @@ export default function Inbox() {
     }
   }, [threadsRefreshKey, activeProfile.id])
 
+  React.useEffect(() => {
+    if (!activeConversationId && threads.length) {
+      const firstId = threads[0].id
+      setActiveConversationId(firstId)
+      setExpandedThreadId(firstId)
+    }
+  }, [threads, activeConversationId])
+
+  React.useEffect(() => {
+    if (tab === 'messages' && !activeConversationId && threads.length) {
+      const firstId = threads[0].id
+      setActiveConversationId(firstId)
+      setExpandedThreadId(firstId)
+    }
+  }, [tab, threads, activeConversationId])
+
   const activeThread = activeConversationId ? threads.find((thread) => thread.id === activeConversationId) ?? null : null
 
+  React.useEffect(() => {
+    if (!expandedThreadId || !activeConversationId) return
+    const target = threadRefs.current[expandedThreadId]
+    if (!target) return
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })
+    })
+  }, [expandedThreadId, activeConversationId])
+
+  React.useEffect(() => {
+    const shouldLock = expandedThreadId && tab === 'messages'
+    if (!shouldLock) return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [expandedThreadId, tab])
+
   function handleSelectThread(id: string) {
+    setExpandedThreadId((current) => (current === id ? null : id))
     setActiveConversationId(id)
     setThreads((current) => current.map((thread) => (thread.id === id ? { ...thread, unreadCount: 0 } : thread)))
   }
+
+  const handleOpenThreadProfile = React.useCallback(
+    (event: React.MouseEvent, handle: string | null) => {
+      if (!handle) return
+      event.stopPropagation()
+      navigate(`/profile/${handle}`)
+    },
+    [navigate]
+  )
+
+  const dismissNotification = React.useCallback((id: string) => {
+    setNotifications((current) => current.filter((item) => item.id !== id))
+  }, [])
 
   function updateDraft(threadId: string, value: string) {
     setDrafts((current) => ({ ...current, [threadId]: value }))
@@ -387,6 +439,14 @@ export default function Inbox() {
               ) : null}
               <span className={styles.notificationTime}>{formatRelativeTime(item.createdAt)}</span>
             </div>
+            <button
+              type="button"
+              className={styles.notificationDismiss}
+              aria-label="Dismiss notification"
+              onClick={() => dismissNotification(item.id)}
+            >
+              ×
+            </button>
           </article>
         )
       })
@@ -475,98 +535,120 @@ export default function Inbox() {
           {threads.map((thread) => {
             const isActive = thread.id === activeConversationId
             const draftValue = drafts[thread.id] ?? ''
-        const title = pickThreadTitle(thread, selfHandle)
-        const preview = thread.lastMessage?.body ?? 'Start the conversation.'
-        const lastTimestamp = thread.lastMessage?.createdAt ?? thread.updatedAt
-        const timeAgo = formatRelativeTime(lastTimestamp, true)
-        const badgeLetter = (title.replace(/^@/, '') || 'c')[0]?.toUpperCase() ?? 'C'
-        const isSending = sendingThreadId === thread.id
-        const isExpanded = Boolean(isActive && activeThread)
-        return (
-          <article
-            key={thread.id}
-            className={`${styles.threadCard} ${isExpanded ? styles.threadCardExpanded : ''}`}
-          >
-            <button
-              type="button"
-              className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
-              onClick={() => handleSelectThread(thread.id)}
-              aria-expanded={isExpanded}
-            >
-              <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
-                {badgeLetter}
-              </div>
-              <div className={styles.threadCopy}>
-                <div className={styles.threadTitleRow}>
-                  <span className={styles.threadActor}>{title}</span>
-                  <span className={styles.threadTime}>{timeAgo}</span>
-                </div>
-                <p className={styles.threadPreview}>{preview}</p>
-              </div>
-            </button>
-
-            <div
-              className={`${styles.conversation} ${isExpanded ? styles.conversationOpen : styles.conversationClosed}`}
-              aria-hidden={!isExpanded}
-            >
-              {isExpanded ? (
-                <>
-                  {messageError ? <div className={styles.contactError}>{messageError}</div> : null}
-                  <div className={styles.messageList}>
-                    {messagesBusy && !messages.length ? (
-                      <div className={styles.status}>Loading conversation...</div>
-                    ) : null}
-                    {messages.map((message) => {
-                      const fromMe = isMessageFromCurrentUser(message, selfHandle)
-                      return (
-                        <div
-                          key={message.id}
-                          className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
-                        >
-                          <span>{message.body}</span>
-                          <span className={styles.bubbleMeta}>{formatRelativeTime(message.createdAt)}</span>
-                        </div>
-                      )
-                    })}
+            const title = pickThreadTitle(thread, selfHandle)
+            const preview = thread.lastMessage?.body ?? 'Start the conversation.'
+            const lastTimestamp = thread.lastMessage?.createdAt ?? thread.updatedAt
+            const timeAgo = formatRelativeTime(lastTimestamp, true)
+            const badgeLetter = (title.replace(/^@/, '') || 'c')[0]?.toUpperCase() ?? 'C'
+            const isSending = sendingThreadId === thread.id
+            const targetHandle = resolveThreadTargetHandle(thread, selfHandle)
+            const isExpanded = Boolean(isActive && activeThread && expandedThreadId === thread.id)
+            return (
+              <article
+                key={thread.id}
+                ref={(node) => {
+                  threadRefs.current[thread.id] = node
+                }}
+                className={`${styles.threadCard} ${isExpanded ? styles.threadCardExpanded : ''}`}
+              >
+                <button
+                  type="button"
+                  className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
+                  onClick={() => handleSelectThread(thread.id)}
+                  aria-expanded={isExpanded}
+                >
+                  <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
+                    {badgeLetter}
                   </div>
-
-                  <div className={styles.quickReplies}>
-                    {quickReplyOptions.map((reply) => (
-                      <button
-                        key={`${thread.id}-${reply}`}
-                        type="button"
-                        className={styles.quickReply}
-                        onClick={() => sendMessage(thread.id, reply)}
-                        disabled={isSending}
+                  <div className={styles.threadCopy}>
+                    <div className={styles.threadTitleRow}>
+                      <span
+                        className={`${styles.threadActor} ${targetHandle ? styles.threadActorLink : ''}`}
+                        title={targetHandle ? `View ${formatHandle(targetHandle)}'s profile` : undefined}
+                        onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
                       >
-                        {reply}
-                      </button>
-                    ))}
+                        {title}
+                      </span>
+                      <span className={styles.threadTime}>{timeAgo}</span>
+                    </div>
+                    <p className={styles.threadPreview}>{preview}</p>
                   </div>
+                </button>
 
-                  <form
-                    className={styles.composer}
-                    onSubmit={(event) => {
-                      event.preventDefault()
-                      sendMessage(thread.id)
-                    }}
-                  >
-                    <textarea
-                      value={draftValue}
-                      onChange={(event) => updateDraft(thread.id, event.target.value)}
-                      placeholder="Type a message..."
-                      rows={2}
-                      disabled={isSending}
-                    />
-                    <button type="submit" disabled={!draftValue.trim() || isSending}>
-                      {isSending ? 'Sending...' : 'Send'}
-                    </button>
-                  </form>
-                </>
-              ) : null}
-            </div>
-          </article>
-        )
+                <div
+                  className={`${styles.conversation} ${isExpanded ? styles.conversationOpen : styles.conversationClosed}`}
+                  aria-hidden={!isExpanded}
+                >
+                  {isExpanded ? (
+                    <>
+                      {targetHandle ? (
+                        <div className={styles.conversationHandleRow}>
+                          <span className={styles.conversationHandleLabel}>Chatting with</span>
+                          <button
+                            type="button"
+                            className={styles.conversationHandle}
+                            onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
+                          >
+                            {formatHandle(targetHandle)}
+                          </button>
+                        </div>
+                      ) : null}
+                      {messageError ? <div className={styles.contactError}>{messageError}</div> : null}
+                      <div className={styles.messageList}>
+                        {messagesBusy && !messages.length ? (
+                          <div className={styles.status}>Loading conversation...</div>
+                        ) : null}
+                        {messages.map((message) => {
+                          const fromMe = isMessageFromCurrentUser(message, selfHandle)
+                          return (
+                            <div
+                              key={message.id}
+                              className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
+                            >
+                              <span>{message.body}</span>
+                              <span className={styles.bubbleMeta}>{formatRelativeTime(message.createdAt)}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      <div className={styles.quickReplies}>
+                        {quickReplyOptions.map((reply) => (
+                          <button
+                            key={`${thread.id}-${reply}`}
+                            type="button"
+                            className={styles.quickReply}
+                            onClick={() => sendMessage(thread.id, reply)}
+                            disabled={isSending}
+                          >
+                            {reply}
+                          </button>
+                        ))}
+                      </div>
+
+                      <form
+                        className={styles.composer}
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          sendMessage(thread.id)
+                        }}
+                      >
+                        <textarea
+                          value={draftValue}
+                          onChange={(event) => updateDraft(thread.id, event.target.value)}
+                          placeholder="Type a message..."
+                          rows={2}
+                          disabled={isSending}
+                        />
+                        <button type="submit" disabled={!draftValue.trim() || isSending}>
+                          {isSending ? 'Sending...' : 'Send'}
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                </div>
+              </article>
+            )
           })}
         </>
       )
@@ -712,10 +794,26 @@ function formatHandle(value: string): string {
   return value.startsWith('@') ? value : `@${value}`
 }
 
-function pickThreadTitle(thread: MessageThread, selfHandle: string): string {
-  const participant =
+function findThreadPartner(
+  thread: MessageThread,
+  selfHandle: string
+): MessageThread['participants'][number] | null {
+  return (
     thread.participants.find((member) => normalizeHandle(member.handle || member.name) !== selfHandle) ??
-    thread.participants[0]
+    thread.participants[0] ??
+    null
+  )
+}
+
+function resolveThreadTargetHandle(thread: MessageThread, selfHandle: string): string | null {
+  const participant = findThreadPartner(thread, selfHandle)
+  if (!participant) return null
+  const handle = (participant.handle || participant.name || '').trim()
+  return handle ? normalizeHandle(handle) : null
+}
+
+function pickThreadTitle(thread: MessageThread, selfHandle: string): string {
+  const participant = findThreadPartner(thread, selfHandle)
   if (!participant) {
     return 'Conversation'
   }
