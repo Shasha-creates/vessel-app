@@ -143,12 +143,6 @@ export default function Inbox() {
   }, [isAuthenticated, activeProfile.id])
 
   React.useEffect(() => {
-    if (!activeConversationId && threads.length) {
-      setActiveConversationId(threads[0].id)
-    }
-  }, [threads, activeConversationId])
-
-  React.useEffect(() => {
     if (!activeConversationId) {
       setMessages([])
       return
@@ -178,12 +172,6 @@ export default function Inbox() {
       cancelled = true
     }
   }, [activeConversationId])
-
-  React.useEffect(() => {
-    if (tab === 'messages' && !activeConversationId && threads.length) {
-      setActiveConversationId(threads[0].id)
-    }
-  }, [tab, threads, activeConversationId])
 
   React.useEffect(() => {
     let cancelled = false
@@ -220,15 +208,7 @@ export default function Inbox() {
   }, [threadsRefreshKey, activeProfile.id])
 
   React.useEffect(() => {
-    if (!activeConversationId && threads.length) {
-      const firstId = threads[0].id
-      setActiveConversationId(firstId)
-      setExpandedThreadId(firstId)
-    }
-  }, [threads, activeConversationId])
-
-  React.useEffect(() => {
-    if (tab === 'messages' && !activeConversationId && threads.length) {
+    if (tab === 'messages' && !activeConversationId && threads.length > 0) {
       const firstId = threads[0].id
       setActiveConversationId(firstId)
       setExpandedThreadId(firstId)
