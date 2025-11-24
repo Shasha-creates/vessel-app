@@ -62,6 +62,7 @@
   gap: clamp(0.5rem, 2vw, 1rem);
   pointer-events: auto;
   width: 100%;
+  max-width: clamp(420px, 78vw, 540px);
   margin: 0 auto;
 }
 

@@ -37,14 +37,6 @@ export default function Home() {
       setLoading(true)
       setError(null)
 
-      const requireAuth = activeTab === 'following' || activeTab === 'friends'
-      if (requireAuth && !contentService.isAuthenticated()) {
-        setFeatured([])
-        setError('Sign in to view this feed.')
-        setLoading(false)
-        return
-      }
-
       try {
         let feed: Video[] = []
         if (activeTab === 'following') {
