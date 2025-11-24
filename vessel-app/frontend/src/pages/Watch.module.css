@@ -280,8 +280,8 @@
   border-radius: 999px;
   border: none;
   padding: 0.75rem 1.2rem;
-  background: linear-gradient(135deg, #6d8bff 0%, #74f1ff 100%);
-  color: #0d1024;
+  background: linear-gradient(135deg, #373f27 0%, #2f361f 100%);
+  color: #f8f6f0;
   font-weight: 700;
   cursor: pointer;
 }

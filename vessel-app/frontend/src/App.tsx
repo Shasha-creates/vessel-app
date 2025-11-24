@@ -15,6 +15,7 @@ import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
 import { contentService } from "./services/contentService"
 import { Media } from "./media"
+import { SvgDiscover, PlusIcon, SvgInbox, SvgPerson } from "./shared/icons"
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
 const NAV_HIDDEN_ROUTES = new Set([
@@ -113,7 +114,9 @@ export default function App() {
               isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
             }
           >
-            <span className={styles.bottomIconCircle}>D</span>
+            <span className={styles.bottomIconCircle} aria-hidden>
+              <SvgDiscover width={20} height={20} />
+            </span>
             <span>Discover</span>
           </NavLink>
 
@@ -125,7 +128,9 @@ export default function App() {
                 : `${styles.bottomLink} ${styles.bottomLinkPrimary}`
             }
           >
-            <span className={styles.bottomIconCircle}>+</span>
+            <span className={styles.bottomIconCircle} aria-hidden>
+              <PlusIcon width={18} height={18} />
+            </span>
           </NavLink>
 
           <NavLink
@@ -134,7 +139,9 @@ export default function App() {
               isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
             }
           >
-            <span className={styles.bottomIconCircle}>I</span>
+            <span className={styles.bottomIconCircle} aria-hidden>
+              <SvgInbox width={20} height={20} />
+            </span>
             <span className={styles.badgedLabel}>
               Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
             </span>
@@ -146,7 +153,9 @@ export default function App() {
               isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
             }
           >
-            <span className={styles.bottomIconCircle}>P</span>
+            <span className={styles.bottomIconCircle} aria-hidden>
+              <SvgPerson width={20} height={20} />
+            </span>
             <span>Profile</span>
           </NavLink>
         </nav>

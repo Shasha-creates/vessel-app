@@ -9,7 +9,7 @@
   --surface-highlight: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-muted: rgba(255, 255, 255, 0.12);
-  --accent-strong: #3cf2ff;
+  --accent-strong: #373f27;
   --accent-soft: rgba(60, 242, 255, 0.15);
   --safe-area-top: env(safe-area-inset-top, 0px);
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

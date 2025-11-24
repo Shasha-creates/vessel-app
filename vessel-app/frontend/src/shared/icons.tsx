@@ -121,3 +121,22 @@ export const PlusIcon = (props: BaseIconProps) => (
     <line x1="7" y1="12" x2="17" y2="12" />
   </SvgIcon>
 )
+
+// Simple image-based icon wrapper for vendor-provided SVG assets in `public/media/icons`
+type ImgIconProps = React.ImgHTMLAttributes<HTMLImageElement> & { src?: string }
+
+const ImgIcon = ({ src, alt = '', width, height, ...rest }: ImgIconProps) => (
+  <img src={src} alt={alt} width={width} height={height} {...rest} />
+)
+
+export const SvgLike = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-like.svg" alt="Like" {...props} />
+export const SvgComments = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-comments.svg" alt="Comments" {...props} />
+export const SvgCommentsAlt = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-comments-1.svg" alt="Comments" {...props} />
+export const SvgBookmark = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-bookmark.svg" alt="Bookmark" {...props} />
+export const SvgVolume = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-volume.svg" alt="Volume" {...props} />
+export const SvgMute = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-mute.svg" alt="Mute" {...props} />
+export const SvgExitSmall = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-exit-1.svg" alt="Close" {...props} />
+export const SvgExitCircle = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-exit-2.svg" alt="Close" {...props} />
+export const SvgPerson = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-person.svg" alt="Profile" {...props} />
+export const SvgInbox = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-inbox.svg" alt="Inbox" {...props} />
+export const SvgDiscover = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-discover.svg" alt="Discover" {...props} />

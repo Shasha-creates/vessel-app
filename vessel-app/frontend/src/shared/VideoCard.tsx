@@ -2,7 +2,8 @@ import React from "react"
 import { formatLikes } from "../services/mockData"
 import { type Video, THUMBNAIL_PLACEHOLDER, VIDEO_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
-import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon } from "./icons"
+import { DonateIcon, ShareIcon } from "./icons"
+import { SvgBookmark, SvgComments, SvgLike, SvgVolume, SvgMute } from "./icons"
 
 type Props = {
   video: Video
@@ -108,7 +109,7 @@ export default function VideoCard({
   }> = [
     {
       key: "sound",
-      icon: <VolumeIcon muted={muted || !isActive} width={22} height={22} />,
+      icon: muted || !isActive ? <SvgMute width={22} height={22} /> : <SvgVolume width={22} height={22} />,
       count: soundCount,
       label: soundLabel,
       onClick: () => toggleMute(),
@@ -117,7 +118,7 @@ export default function VideoCard({
     },
     {
       key: "like",
-      icon: <ThumbIcon width={22} height={22} />,
+      icon: <SvgLike width={22} height={22} />,
       count: likes,
       label: isLiked ? "Liked" : "Likes",
       onClick: onLike,
@@ -126,14 +127,14 @@ export default function VideoCard({
     },
     {
       key: "comment",
-      icon: <CommentIcon width={22} height={22} />,
+      icon: <SvgComments width={22} height={22} />,
       count: formatCount(video.comments ?? 0),
       label: "Comments",
       onClick: onComment,
     },
     {
       key: "save",
-      icon: <BookmarkIcon width={22} height={22} />,
+      icon: <SvgBookmark width={22} height={22} />,
       count: formatCount(video.bookmarks ?? 0),
       label: isBookmarked ? "Saved" : "Save",
       onClick: onBookmark,

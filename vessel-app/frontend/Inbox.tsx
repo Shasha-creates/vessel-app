@@ -520,7 +520,7 @@ export default function Inbox() {
                 }}
                 aria-label="Minimize composer"
               >
-                ×
+                ï¿½
               </button>
             </div>
             {composeHandle.length > 1 && mutualFriends.length ? (

@@ -9,7 +9,8 @@ import {
 } from '../services/contentService'
 import { formatLikes } from '../services/mockData'
 import { formatRelativeTime } from '../utils/time'
-import { BookmarkIcon, CommentIcon, ShareIcon, ThumbIcon } from '../shared/icons'
+import { ShareIcon } from '../shared/icons'
+import { SvgLike, SvgComments, SvgBookmark } from '../shared/icons'
 import styles from './Watch.module.css'
 
 export default function Watch() {
@@ -140,15 +141,15 @@ export default function Watch() {
         />
         <div className={styles.actionsRail}>
           <button type="button" onClick={toggleLike} aria-pressed={isLiked}>
-            <ThumbIcon width={28} height={28} />
+            <SvgLike width={28} height={28} />
             <span>{likes}</span>
           </button>
           <button type="button" onClick={() => setShowComments(true)}>
-            <CommentIcon width={28} height={28} />
+            <SvgComments width={28} height={28} />
             <span>{comments.length}</span>
           </button>
           <button type="button" onClick={toggleBookmark} aria-pressed={isBookmarked}>
-            <BookmarkIcon width={28} height={28} />
+            <SvgBookmark width={28} height={28} />
             <span>{clip.bookmarks ?? 0}</span>
           </button>
           <button type="button" onClick={shareClip}>
