@@ -1,10 +1,17 @@
 .feed {
   position: fixed;
   inset: 0;
-  width: 100vw;
-  height: 100vh;
-  background: var(--app-background);
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #0f121c;
   overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.feed:focus,
+.feed:focus-visible {
+  outline: none;
 }
 
 .scroller {

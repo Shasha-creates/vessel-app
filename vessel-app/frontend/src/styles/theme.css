@@ -11,6 +11,8 @@
   --border-muted: rgba(255, 255, 255, 0.12);
   --accent-strong: #3cf2ff;
   --accent-soft: rgba(60, 242, 255, 0.15);
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   --bottom-nav-height: 78px;
 }
 
@@ -32,4 +34,10 @@ input,
 textarea,
 select {
   font-family: inherit;
+}
+
+@media (max-width: 520px) {
+  :root {
+    --bottom-nav-height: 70px;
+  }
 }

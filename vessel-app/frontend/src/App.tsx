@@ -13,11 +13,8 @@ import ResetPassword from "./pages/ResetPassword"
 import Settings from "./pages/Settings"
 import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
-<<<<<<< HEAD
-import { Media } from "./media"
-=======
 import { contentService } from "./services/contentService"
->>>>>>> 08f56aa019a44f74322feefb42facee1fd422397
+import { Media } from "./media"
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
 const NAV_HIDDEN_ROUTES = new Set([
@@ -31,6 +28,7 @@ const NAV_HIDDEN_ROUTES = new Set([
 export default function App() {
   const location = useLocation()
   const showChromeNav = !NAV_HIDDEN_ROUTES.has(location.pathname)
+  const isFeedLayout = location.pathname === "/" || location.pathname === "/friends"
   const [unreadBadge, setUnreadBadge] = React.useState<string | null>(null)
   const [adminUnlocked, setAdminUnlocked] = React.useState(() => {
     if (typeof window === "undefined") return false
@@ -89,7 +87,7 @@ export default function App() {
 
   return (
     <div className={styles.app}>
-      <main className={styles.main}>
+      <main className={isFeedLayout ? `${styles.main} ${styles.mainFeed}` : styles.main}>
         <Routes>
           <Route path="/" element={<Feed />} />
           <Route path="/friends" element={<Feed />} />

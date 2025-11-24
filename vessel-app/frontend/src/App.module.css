@@ -1,5 +1,6 @@
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--app-background);
   display: flex;
   flex-direction: column;
@@ -10,20 +11,27 @@
   flex: 1;
   display: flex;
   justify-content: center;
-  padding-bottom: calc(var(--bottom-nav-height) + 1rem);
+  width: 100%;
+  padding-inline: clamp(0.75rem, 3vw, 1.5rem);
+  padding-bottom: calc(var(--bottom-nav-height) + max(1rem, var(--safe-area-bottom)));
+}
+
+.mainFeed {
+  padding: 0;
+  overflow: hidden;
 }
 
 .bottomNav {
   position: fixed;
   left: 50%;
-  bottom: 1.1rem;
+  bottom: calc(0.9rem + var(--safe-area-bottom));
   transform: translateX(-50%);
   width: min(560px, 92vw);
   height: 70px;
   display: flex;
   align-items: center;
   justify-content: space-around;
-  padding: 0.4rem 0.75rem;
+  padding: 0.4rem 0.75rem max(0.5rem, var(--safe-area-bottom));
   background: #373f27;
   backdrop-filter: blur(12px);
   border-radius: 28px;
@@ -316,4 +324,31 @@
 .adminHelper a {
   color: #5b8dff;
   font-weight: 600;
+}
+
+@media (max-width: 540px) {
+  .bottomNav {
+    width: min(440px, 96vw);
+    height: 64px;
+    border-radius: 22px;
+    padding: 0.35rem 0.65rem max(0.5rem, var(--safe-area-bottom));
+    gap: 0.15rem;
+  }
+
+  .bottomLink {
+    font-size: 0.74rem;
+  }
+
+  .bottomIconCircle {
+    width: 32px;
+    height: 32px;
+    font-size: 0.86rem;
+  }
+
+  .bottomLinkPrimary {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+    border-radius: 20px;
+  }
 }
