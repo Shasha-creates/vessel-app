@@ -40,6 +40,8 @@ let remoteFeed: Video[] = []
 type StoredUpload = Omit<Video, 'videoUrl'>
 type CommentableVideo = Video
 
+const USE_SEEDS = import.meta.env.VITE_USE_SEEDS === 'true'
+
 const normalizedSeedVideos: Video[] = seedVideos.map((clip) => ({
   ...clip,
   thumbnailUrl: resolveThumbnailUrl(clip.thumbnailUrl, clip.videoUrl),
@@ -1249,7 +1251,8 @@ function ensureLibraryHydrated() {
 
 function getLibrary(): Video[] {
   ensureLibraryHydrated()
-  return [...remoteFeed, ...uploads, ...normalizedSeedVideos]
+  const base = [...remoteFeed, ...uploads]
+  return USE_SEEDS ? [...base, ...normalizedSeedVideos] : base
 }
 
 function notify() {
@@ -1451,10 +1454,16 @@ export const contentService = {
     return bookmarkedIds.has(clipId)
   },
   async fetchForYouFeed(): Promise<Video[]> {
-    const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/for-you')
-    const mapped = payload.videos.map(mapApiVideo)
-    replaceRemoteFeed(mapped, { silent: true })
-    return mapped
+    try {
+      const payload = await getJson<{ videos: ApiFeedVideo[] }>('/api/feed/for-you')
+      const mapped = payload.videos.map(mapApiVideo)
+      replaceRemoteFeed(mapped, { silent: true })
+      return mapped
+    } catch {
+      const fallback = USE_SEEDS ? sortForFeed(filterFaithCentric(normalizedSeedVideos)) : []
+      replaceRemoteFeed(fallback, { silent: true })
+      return fallback
+    }
   },
   async fetchFollowingFeed(): Promise<Video[]> {
     try {
