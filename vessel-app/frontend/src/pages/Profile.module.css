@@ -535,25 +535,36 @@
 .authBackdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 6, 10, 0.82);
+  background: rgba(10, 12, 16, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem;
+  padding: clamp(1.1rem, 3vw, 1.8rem);
   z-index: 60;
 }
 
 .authPanel {
-  width: min(520px, 92vw);
-  background: rgba(16, 18, 28, 0.97);
-  border-radius: 28px;
-  padding: clamp(1.6rem, 4vw, 2.4rem);
+  width: min(540px, 94vw);
+  background: radial-gradient(circle at 20% 5%, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 22px;
+  padding: clamp(1.25rem, 3vw, 1.85rem);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  box-shadow: 0 40px 90px -48px rgba(10, 12, 18, 0.9);
-  max-height: 90vh;
+  box-shadow: 0 26px 60px -32px rgba(8, 10, 16, 0.68);
+  max-height: 88vh;
   overflow-y: auto;
+  color: #e8edf8;
+  scrollbar-width: none;
+}
+
+.authPanel::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .authHeader {
@@ -567,18 +578,27 @@
   margin: 0;
   font-size: 1.45rem;
   font-weight: 700;
+  color: #f3f6ff;
 }
 
 .authClose {
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  width: 34px;
-  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.35);
+  color: #f8fbff;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   cursor: pointer;
   font-size: 1.2rem;
   line-height: 1;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.authClose:hover,
+.authClose:focus-visible {
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
 }
 
 .authForm {
@@ -599,8 +619,8 @@
   width: 82px;
   height: 82px;
   border-radius: 50%;
-  background: rgba(15, 18, 28, 0.85);
-  border: 2px solid rgba(116, 241, 255, 0.35);
+  background: rgba(9, 11, 16, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -626,9 +646,9 @@
 .authAvatarButton,
 .authAvatarClear {
   border-radius: 999px;
-  border: 1px solid rgba(116, 241, 255, 0.35);
-  background: rgba(15, 18, 28, 0.85);
-  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(9, 11, 16, 0.75);
+  color: #f3f6ff;
   font-size: 0.9rem;
   font-weight: 600;
   padding: 0.45rem 1.05rem;
@@ -638,14 +658,14 @@
 
 .authAvatarButton:hover,
 .authAvatarClear:hover {
-  background: rgba(116, 241, 255, 0.18);
-  border-color: rgba(116, 241, 255, 0.55);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.32);
 }
 
 .authAvatarClear {
   border-color: rgba(255, 138, 133, 0.5);
-  color: #ffb3af;
-  background: rgba(45, 20, 20, 0.65);
+  color: #ffc0bb;
+  background: rgba(42, 26, 26, 0.6);
 }
 
 .authAvatarClear:hover {
@@ -659,7 +679,7 @@
 
 .authSubtitle {
   margin: 0;
-  color: var(--text-secondary);
+  color: #b3bbcb;
   font-size: 0.95rem;
 }
 
@@ -671,23 +691,25 @@
 
 .authField span {
   font-weight: 600;
+  color: #d4dbeb;
 }
 
 .authInput {
-  border: 1px solid var(--border-subtle);
-  background: rgba(12, 14, 22, 0.92);
-  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(9, 11, 16, 0.72);
+  color: #f3f6ff;
   border-radius: 16px;
   padding: 0.7rem 1rem;
   font-size: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .authHandleRow {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  border: 1px solid var(--border-subtle);
-  background: rgba(12, 14, 22, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(9, 11, 16, 0.72);
   border-radius: 16px;
   padding: 0 0.85rem;
 }
@@ -706,13 +728,13 @@
 }
 
 .authHandlePrefix {
-  color: var(--text-muted);
+  color: #b3bbcb;
   font-weight: 600;
 }
 
 .authHint {
   font-size: 0.75rem;
-  color: var(--text-muted);
+  color: #a2abc0;
 }
 
 .authActions {
@@ -733,20 +755,21 @@
 
 .authPrimary {
   border: none;
-  background: linear-gradient(135deg, #6d8bff 0%, #74f1ff 100%);
-  color: #101225;
+  background: linear-gradient(135deg, #5c5238 0%, #3c3424 100%);
+  color: #f8f6f0;
+  box-shadow: 0 16px 34px -16px rgba(54, 45, 29, 0.6);
 }
 
 .authSecondary {
-  border: 1px solid var(--border-subtle);
-  background: rgba(15, 18, 28, 0.85);
-  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(9, 11, 16, 0.75);
+  color: #f8f6f0;
 }
 
 .authGhost {
   border: none;
   background: transparent;
-  color: var(--text-secondary);
+  color: #b3bbcb;
 }
 
 .authPrimary:disabled,
@@ -761,13 +784,13 @@
 .authFooter {
   text-align: center;
   font-size: 0.9rem;
-  color: var(--text-secondary);
+  color: #b3bbcb;
 }
 
 .authLink {
   border: none;
   background: none;
-  color: #72deff;
+  color: #d4dbeb;
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -792,7 +815,7 @@
 
 .authForm input::placeholder,
 .authHandleRow input::placeholder {
-  color: var(--text-muted);
+  color: #9ba3b8;
 }
 
 

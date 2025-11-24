@@ -130,15 +130,15 @@ export default function App() {
 
           <NavLink
             to="/inbox"
-          className={({ isActive }) =>
-            isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
-          }
-        >
-          <span className={styles.bottomIconCircle}>I</span>
-          <span className={styles.badgedLabel}>
-            Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
-          </span>
-        </NavLink>
+            className={({ isActive }) =>
+              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
+            }
+          >
+            <span className={styles.bottomIconCircle}>I</span>
+            <span className={styles.badgedLabel}>
+              Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
+            </span>
+          </NavLink>
 
           <NavLink
             to="/profile/me"
@@ -206,8 +206,12 @@ function AdminGate({ onUnlock }: AdminGateProps) {
             <li>Private testing sessions</li>
           </ul>
           <div className={styles.adminHeroFooter}>
-            <span>Build channel: <strong>Godlyme</strong></span>
-            <span>Status: <strong>Invite only</strong></span>
+            <span>
+              Build channel: <strong>Godlyme</strong>
+            </span>
+            <span>
+              Status: <strong>Invite only</strong>
+            </span>
           </div>
         </section>
 
@@ -236,7 +240,7 @@ function AdminGate({ onUnlock }: AdminGateProps) {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="•••••••••"
+                placeholder="Passphrase"
                 disabled={busy}
                 autoComplete="current-password"
               />

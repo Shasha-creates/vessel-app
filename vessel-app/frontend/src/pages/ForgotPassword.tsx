@@ -31,31 +31,36 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className={styles.login}>
-      <h1>Forgot password</h1>
-      <p className={styles.subtitle}>Enter the email you used on Vessel and we’ll send you a reset link.</p>
-      <form className={styles.form} onSubmit={submit}>
-        <label>
-          <span>Email</span>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            disabled={busy}
-          />
-        </label>
-        {status ? <div className={styles.success}>{status}</div> : null}
-        {error ? <div className={styles.error}>{error}</div> : null}
-        <div className={styles.actions}>
-          <button type="submit" disabled={busy}>
-            {busy ? "Sending link..." : "Send reset link"}
-          </button>
-          <Link className={styles.secondaryLink} to="/login">
-            Back to sign in
-          </Link>
+    <div className={styles.forgotBackdrop}>
+      <div className={styles.forgotPanel}>
+        <div className={styles.forgotHeader}>
+          <h3>Forgot password</h3>
+          <p>Enter the email you use on Godly Me and we will send you a reset link.</p>
         </div>
-      </form>
+        <form className={styles.forgotForm} onSubmit={submit}>
+          <label className={styles.forgotField}>
+            <span>Email</span>
+            <input
+              className={styles.forgotInput}
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              disabled={busy}
+            />
+          </label>
+          {status ? <div className={styles.forgotSuccess}>{status}</div> : null}
+          {error ? <div className={styles.forgotError}>{error}</div> : null}
+          <div className={styles.forgotActions}>
+            <button type="submit" className={styles.forgotPrimary} disabled={busy}>
+              {busy ? "Sending link..." : "Send reset link"}
+            </button>
+            <Link className={styles.forgotSecondary} to="/login">
+              Back to sign in
+            </Link>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
