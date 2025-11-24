@@ -60,6 +60,11 @@
   color: #0c0e16;
 }
 
+/* Ensure the like icon itself can be coloured independently (use currentColor in the inline SVG) */
+.actionsRail button[data-key="like"][aria-pressed='true'] {
+  color: #ff2d7a;
+}
+
 .actionsRail span {
   font-size: 0.8rem;
   font-weight: 700;

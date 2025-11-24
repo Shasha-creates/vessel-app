@@ -217,8 +217,16 @@
 }
 
 .actionButtonActive {
-  background: linear-gradient(135deg, rgba(110, 138, 255, 0.95), rgba(91, 224, 255, 0.95));
-  color: #101225;
+  /* Remove bright blue gradient so active state doesn't change background.
+     Keep a subtle neutral background so the icon change alone indicates state. */
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+
+/* Color the like button icon pink when active (liked). */
+.actionButton[data-key="like"].actionButtonActive .actionIcon,
+.actionButton[data-key="like"][aria-pressed="true"] .actionIcon {
+  color: #ff2d7a; /* pink */
 }
 
 .actionIcon {

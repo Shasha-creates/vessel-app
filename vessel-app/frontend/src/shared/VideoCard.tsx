@@ -2,8 +2,8 @@ import React from "react"
 import { formatLikes } from "../services/mockData"
 import { type Video, THUMBNAIL_PLACEHOLDER, VIDEO_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
-import { DonateIcon, ShareIcon } from "./icons"
-import { SvgBookmark, SvgComments, SvgLike, SvgVolume, SvgMute } from "./icons"
+import { DonateIcon, ShareIcon, ProvidedLikeIcon } from "./icons"
+import { SvgBookmark, SvgComments, SvgVolume, SvgMute } from "./icons"
 
 type Props = {
   video: Video
@@ -118,7 +118,7 @@ export default function VideoCard({
     },
     {
       key: "like",
-      icon: <SvgLike width={22} height={22} />,
+      icon: <ProvidedLikeIcon width={22} height={22} />,
       count: likes,
       label: isLiked ? "Liked" : "Likes",
       onClick: onLike,
@@ -232,6 +232,7 @@ export default function VideoCard({
           <button
             key={action.key}
             type="button"
+            data-key={action.key}
             className={`${styles.actionButton} ${action.active ? styles.actionButtonActive : ""}`}
             onClick={() => action.onClick?.(video)}
             aria-label={`${action.label} for ${video.title}`}

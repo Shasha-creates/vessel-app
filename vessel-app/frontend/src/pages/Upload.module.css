@@ -24,9 +24,10 @@
   gap: 1.25rem;
   padding: 2rem;
   border-radius: 18px;
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-subtle);
+  background: #898F68; /* match requested upload section color */
+  border: 1px solid rgba(0,0,0,0.12);
   box-shadow: 0 24px 48px -42px rgba(17, 32, 56, 0.85);
+  color: #f8f6f0;
 }
 
 .form label {
@@ -63,13 +64,14 @@
 }
 
 .recorder {
-  border: 1px dashed var(--border-subtle);
+  border: 1px dashed rgba(0,0,0,0.12);
   border-radius: 16px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  background: var(--surface-base);
+  background: #898F68; /* match upload section */
+  color: #f8f6f0;
 }
 
 .recorderHeader span {
@@ -86,7 +88,7 @@
 .cameraPreview {
   border-radius: 14px;
   overflow: hidden;
-  background: #050505;
+  background: rgba(0,0,0,0.12);
   min-height: 220px;
   display: flex;
   align-items: center;
@@ -103,7 +105,7 @@
 
 .cameraPlaceholder {
   position: absolute;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(248, 246, 240, 0.9);
   font-size: 0.95rem;
   letter-spacing: 0.02em;
 }

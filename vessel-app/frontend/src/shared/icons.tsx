@@ -42,6 +42,21 @@ export const HeartIcon = (props: BaseIconProps) => (
   </SvgIcon>
 )
 
+// Filled like icon - uses currentColor for fill so it can be colored via CSS
+export const LikeIconFilled = (props: BaseIconProps) => (
+  <SvgIcon stroke="none" fill="currentColor" {...props}>
+    <path d="M20.8 4.6c-1.7-1.6-4.3-1.6-6 0L12 7.3 9.2 4.6c-1.7-1.6-4.3-1.6-6 0-1.9 1.7-1.9 4.6 0 6.3L12 19l8.8-8.1c1.9-1.7 1.9-4.6 0-6.3z" />
+  </SvgIcon>
+)
+
+// Inline version of the original provided like SVG (from public/media/icons/icons8-like.svg)
+// Uses `currentColor` so it can be recoloured via CSS (e.g., pink when liked)
+export const ProvidedLikeIcon = (props: BaseIconProps) => (
+  <SvgIcon stroke="none" fill="currentColor" viewBox="0 0 50 50" {...props}>
+    <path d="M 25 47 L 24.359375 46.472656 C 23.144531 45.464844 21.5 44.371094 19.59375 43.105469 C 12.167969 38.171875 2 31.417969 2 19.902344 C 2 12.789063 7.832031 7 15 7 C 18.894531 7 22.542969 8.722656 25 11.664063 C 27.457031 8.722656 31.105469 7 35 7 C 42.167969 7 48 12.789063 48 19.902344 C 48 31.417969 37.832031 38.171875 30.40625 43.105469 C 28.5 44.371094 26.855469 45.464844 25.640625 46.472656 Z" />
+  </SvgIcon>
+)
+
 export const ThumbIcon = (props: BaseIconProps) => (
   <SvgIcon stroke="currentColor" fill="none" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...props}>
     <path d="M14 9V5a3 3 0 0 0-3-3L7 12v9h10.4a2 2 0 0 0 2-1.7l1.3-7a2 2 0 0 0-2-2H14z" />

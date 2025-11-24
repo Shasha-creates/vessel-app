@@ -9,8 +9,8 @@ import {
 } from '../services/contentService'
 import { formatLikes } from '../services/mockData'
 import { formatRelativeTime } from '../utils/time'
-import { ShareIcon } from '../shared/icons'
-import { SvgLike, SvgComments, SvgBookmark } from '../shared/icons'
+import { ShareIcon, ProvidedLikeIcon } from '../shared/icons'
+import { SvgComments, SvgBookmark } from '../shared/icons'
 import styles from './Watch.module.css'
 
 export default function Watch() {
@@ -140,8 +140,8 @@ export default function Watch() {
           playsInline
         />
         <div className={styles.actionsRail}>
-          <button type="button" onClick={toggleLike} aria-pressed={isLiked}>
-            <SvgLike width={28} height={28} />
+          <button type="button" onClick={toggleLike} aria-pressed={isLiked} data-key="like" className={isLiked ? undefined : undefined}>
+            <ProvidedLikeIcon width={28} height={28} />
             <span>{likes}</span>
           </button>
           <button type="button" onClick={() => setShowComments(true)}>
