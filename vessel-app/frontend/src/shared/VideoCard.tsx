@@ -1,12 +1,13 @@
 import React from "react"
 import { formatLikes } from "../services/mockData"
-import { type Video, THUMBNAIL_PLACEHOLDER } from "../services/contentService"
+import { type Video, THUMBNAIL_PLACEHOLDER, VIDEO_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
 import { BookmarkIcon, CommentIcon, DonateIcon, ShareIcon, ThumbIcon, VolumeIcon } from "./icons"
 
 type Props = {
   video: Video
   isBookmarked?: boolean
+  isLiked?: boolean
   isFollowing?: boolean
   isActive?: boolean
   onLike?: (clip: Video) => void
@@ -22,6 +23,7 @@ type Props = {
 export default function VideoCard({
   video,
   isBookmarked = false,
+  isLiked = false,
   isFollowing = false,
   isActive = false,
   onLike,
@@ -41,6 +43,7 @@ export default function VideoCard({
     baseHandle.replace(/^@/, '').replace(/\s+/g, '').toLowerCase() || slugify(video.user.name)
   const handle = `@${normalizedHandle}`
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
+  const [videoSrc, setVideoSrc] = React.useState(() => safeVideoSrc(video.videoUrl))
   const [muted, setMuted] = React.useState(false)
   const [expandDescription, setExpandDescription] = React.useState(false)
   const DESCRIPTION_PREVIEW_LIMIT = 20
@@ -48,6 +51,9 @@ export default function VideoCard({
     () => resolvePosterUrl(video.thumbnailUrl, video.videoUrl),
     [video.thumbnailUrl, video.videoUrl]
   )
+  React.useEffect(() => {
+    setVideoSrc(safeVideoSrc(video.videoUrl))
+  }, [video.videoUrl])
   React.useEffect(() => {
     setExpandDescription(false)
     setMuted(false)
@@ -109,7 +115,15 @@ export default function VideoCard({
       active: !muted && isActive,
       ariaPressed: !muted && isActive,
     },
-    { key: "like", icon: <ThumbIcon width={22} height={22} />, count: likes, label: "Likes", onClick: onLike },
+    {
+      key: "like",
+      icon: <ThumbIcon width={22} height={22} />,
+      count: likes,
+      label: isLiked ? "Liked" : "Likes",
+      onClick: onLike,
+      active: isLiked,
+      ariaPressed: isLiked,
+    },
     {
       key: "comment",
       icon: <CommentIcon width={22} height={22} />,
@@ -146,12 +160,13 @@ export default function VideoCard({
       <video
         ref={videoRef}
         className={styles.video}
-        src={video.videoUrl}
+        src={videoSrc}
         poster={posterUrl}
         autoPlay
         loop
         muted={muted || !isActive}
         playsInline
+        onError={() => setVideoSrc((current) => (current === VIDEO_PLACEHOLDER ? current : VIDEO_PLACEHOLDER))}
       />
       <div className={styles.overlay}>
         <div className={styles.topMeta}>
@@ -267,6 +282,14 @@ function resolvePosterUrl(thumbnailUrl?: string, videoUrl?: string) {
     return fallback
   }
   return THUMBNAIL_PLACEHOLDER
+}
+
+function safeVideoSrc(candidate?: string) {
+  const trimmed = (candidate || "").trim()
+  if (trimmed && isVideoAsset(trimmed)) {
+    return trimmed
+  }
+  return VIDEO_PLACEHOLDER
 }
 
 function isVideoAsset(url: string) {

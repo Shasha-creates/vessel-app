@@ -22,9 +22,11 @@ const AUTH_TOKEN_KEY = 'vessel_auth_token'
 const UPLOAD_STORAGE_KEY = 'vessel_user_uploads_v1'
 const FOLLOWING_STORAGE_KEY = 'vessel_following_ids_v1'
 const BOOKMARK_STORAGE_KEY = 'vessel_bookmarks_v1'
+const LIKES_STORAGE_KEY = 'vessel_likes_v1'
 const DEFAULT_VIDEO_PLACEHOLDER = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4'
 const DEFAULT_THUMB_PLACEHOLDER = 'https://placehold.co/640x360?text=Vessel'
 export const THUMBNAIL_PLACEHOLDER = DEFAULT_THUMB_PLACEHOLDER
+export const VIDEO_PLACEHOLDER = DEFAULT_VIDEO_PLACEHOLDER
 const NETWORK_DELAY_MIN = 220
 const NETWORK_DELAY_MAX = 520
 const NETWORK_FAILURE_RATE = 0.05
@@ -262,6 +264,8 @@ let followedIds = new Set<string>()
 let followingFetchPromise: Promise<void> | null = null
 let bookmarksHydrated = false
 let bookmarkedIds = new Set<string>()
+let likesHydrated = false
+let likedByUser: Record<string, Set<string>> = {}
 
 type ModerationContext = 'profile' | 'upload' | 'message' | 'comment'
 type ModerationFieldInput = {
@@ -377,6 +381,8 @@ function setStoredAuthToken(token: string | null): void {
   }
   bookmarksHydrated = false
   bookmarkedIds = new Set()
+  likesHydrated = false
+  likedByUser = {}
 }
 
 function requireApiBaseUrl(): string {
@@ -641,6 +647,63 @@ function ensureBookmarksHydrated() {
 function persistBookmarks() {
   if (typeof window === 'undefined' || !hasAuthSession()) return
   window.localStorage.setItem(BOOKMARK_STORAGE_KEY, JSON.stringify([...bookmarkedIds]))
+}
+
+function ensureLikesHydrated() {
+  if (likesHydrated || typeof window === 'undefined') return
+  likesHydrated = true
+  likedByUser = {}
+  const raw = window.localStorage.getItem(LIKES_STORAGE_KEY)
+  if (!raw) return
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string[]>
+    Object.entries(parsed).forEach(([userId, ids]) => {
+      likedByUser[userId] = new Set(ids)
+    })
+  } catch {
+    likedByUser = {}
+  }
+}
+
+function persistLikes() {
+  if (typeof window === 'undefined' || !hasAuthSession()) return
+  const serialized: Record<string, string[]> = {}
+  Object.entries(likedByUser).forEach(([userId, ids]) => {
+    serialized[userId] = [...ids]
+  })
+  window.localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(serialized))
+}
+
+function getLikedIdsForUser(userId: string): Set<string> {
+  ensureLikesHydrated()
+  const normalizedUser = normalizeId(userId || 'guest')
+  if (!likedByUser[normalizedUser]) {
+    likedByUser[normalizedUser] = new Set()
+  }
+  return likedByUser[normalizedUser]
+}
+
+function addLikeForUser(userId: string, clipId: string) {
+  const likedIds = getLikedIdsForUser(userId)
+  if (!likedIds.has(clipId)) {
+    likedIds.add(clipId)
+    persistLikes()
+  }
+}
+
+function removeLikeForUser(userId: string, clipId: string) {
+  const likedIds = getLikedIdsForUser(userId)
+  if (likedIds.has(clipId)) {
+    likedIds.delete(clipId)
+    persistLikes()
+  }
+}
+
+function getLikedClipsForUser(userId: string): Video[] {
+  if (!hasAuthSession()) return []
+  const likedIds = getLikedIdsForUser(userId)
+  if (!likedIds.size) return []
+  return getLibrary().filter((clip) => likedIds.has(clip.id))
 }
 
 function getSavedIds(): Set<string> {
@@ -1084,6 +1147,13 @@ function normalizeHandleForApi(value: string): string {
 
 function mapApiVideo(video: ApiFeedVideo): Video {
   const likeCount = video.stats?.likes ?? 0
+  const chosenVideoUrl = (() => {
+    const primary = (video.videoUrl || '').trim()
+    if (isLikelyVideoAsset(primary)) return primary
+    const thumbAsVideo = (video.thumbnailUrl || '').trim()
+    if (isLikelyVideoAsset(thumbAsVideo)) return thumbAsVideo
+    return DEFAULT_VIDEO_PLACEHOLDER
+  })()
   return {
     id: video.id,
     title: video.title,
@@ -1096,7 +1166,7 @@ function mapApiVideo(video: ApiFeedVideo): Video {
       churchHome: video.user.church ?? undefined,
       avatar: video.user.photoUrl ?? undefined,
     },
-    videoUrl: video.videoUrl,
+    videoUrl: chosenVideoUrl,
     thumbnailUrl: resolveThumbnailUrl(video.thumbnailUrl, video.videoUrl),
     category: (video.category as ContentCategory) || 'testimony',
     tags: video.tags ?? [],
@@ -1511,18 +1581,43 @@ export const contentService = {
     await deleteJson(`/api/feed/videos/${encodeURIComponent(trimmed)}`, true)
     removeClipFromFeeds(trimmed)
   },
-  async recordLike(clipId: string) {
+  async recordLike(clipId: string): Promise<{ liked: boolean; count: number }> {
     requireVerifiedSession('like videos')
     const clip = getLibrary().find((item) => item.id === clipId)
     if (!clip) {
       throw new Error('Video not found.')
     }
-    const payload = await postJson<{ count: number }>(`/api/videos/${encodeURIComponent(clipId)}/like`, {}, true)
-    clip.likes = payload.count
-    clip.likesDisplay = formatLikes(payload.count)
+    const likerId = getActiveProfile().id || getActiveUserId()
+    const likedIds = getLikedIdsForUser(likerId)
+    const alreadyLiked = likedIds.has(clipId)
+    let nextCount = clip.likes
+
+    if (alreadyLiked) {
+      try {
+        const payload = await deleteJson(`/api/videos/${encodeURIComponent(clipId)}/like`, true).catch(() => null)
+        if (payload && typeof (payload as any).count === 'number') {
+          nextCount = (payload as any).count
+        } else {
+          nextCount = Math.max(0, clip.likes - 1)
+        }
+      } finally {
+        removeLikeForUser(likerId, clipId)
+      }
+    } else {
+      const payload = await postJson<{ count?: number }>(`/api/videos/${encodeURIComponent(clipId)}/like`, {}, true)
+      if (payload && typeof payload.count === 'number') {
+        nextCount = payload.count
+      } else {
+        nextCount = clip.likes + 1
+      }
+      addLikeForUser(likerId, clipId)
+    }
+
+    clip.likes = nextCount
+    clip.likesDisplay = formatLikes(nextCount)
     persistIfUpload(clipId)
     notify()
-    return payload.count
+    return { liked: !alreadyLiked, count: nextCount }
   },
   async fetchClipComments(clipId: string): Promise<VideoComment[]> {
     const trimmedId = clipId.trim()
@@ -1590,13 +1685,20 @@ export const contentService = {
     })
   },
   getLikedFeedFor(userId: string): Video[] {
-    const normalized = normalizeId(userId)
-    const library = getLibrary()
-    const likedPool = library.filter((clip) => normalizeId(clip.user.id) !== normalized)
-    return likedPool
-      .slice()
-      .sort((a, b) => b.likes - a.likes)
-      .slice(0, 18)
+    if (!hasAuthSession()) return []
+    const normalizedTarget = normalizeId(userId)
+    const activeId = normalizeId(getActiveProfile().id || '')
+    if (normalizedTarget && activeId && normalizedTarget !== activeId) {
+      return []
+    }
+    const likedIds = getLikedIdsForUser(normalizedTarget || activeId || 'guest')
+    if (!likedIds.size) return []
+    return getLibrary().filter((clip) => likedIds.has(clip.id))
+  },
+  isLiked(clipId: string) {
+    if (!hasAuthSession()) return false
+    const likerId = getActiveProfile().id || getActiveUserId()
+    return getLikedIdsForUser(likerId).has(clipId)
   },
 }
 

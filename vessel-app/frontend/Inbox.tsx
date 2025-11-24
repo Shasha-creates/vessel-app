@@ -8,8 +8,9 @@ import {
   type ThreadMessage,
   type SuggestedConnection,
   type NotificationSummary,
+  type ApiUser,
 } from '../services/contentService'
-import { formatRelativeTime, formatDateTime } from '../utils/time'
+import { formatDateTime, formatRelativeTime } from '../utils/time'
 
 type TabKey = 'notifications' | 'messages' | 'suggested'
 
@@ -45,10 +46,11 @@ export default function Inbox() {
   const [notificationsLoading, setNotificationsLoading] = React.useState(false)
   const [notificationsError, setNotificationsError] = React.useState<string | null>(null)
   const [composeVisible, setComposeVisible] = React.useState(false)
-  const [composeHandle, setComposeHandle] = React.useState('')
+  const [composeHandle, setComposeHandle] = React.useState('@')
   const [composeDraft, setComposeDraft] = React.useState('')
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
+  const [mutualFriends, setMutualFriends] = React.useState<ApiUser[]>([])
   const isAuthenticated = contentService.isAuthenticated()
   const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -92,6 +94,8 @@ export default function Inbox() {
       setComposeVisible(true)
       if (handle) {
         setComposeHandle(handle.startsWith('@') ? handle : `@${handle}`)
+      } else {
+        setComposeHandle((current) => (current.trim() ? current : '@'))
       }
     },
     []
@@ -106,6 +110,31 @@ export default function Inbox() {
       setSearchParams(nextParams, { replace: true })
     }
   }, [openComposer, searchParams, setSearchParams])
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function loadMutuals() {
+      if (!composeVisible || !isAuthenticated) {
+        return
+      }
+      try {
+        const [following, followers] = await Promise.all([
+          contentService.fetchFollowingProfiles(),
+          contentService.fetchFollowerProfiles(),
+        ])
+        if (cancelled) return
+        const mutuals = buildMutuals(following, followers)
+        setMutualFriends(mutuals)
+      } catch {
+        if (cancelled) return
+        setMutualFriends([])
+      }
+    }
+    void loadMutuals()
+    return () => {
+      cancelled = true
+    }
+  }, [composeVisible, isAuthenticated])
 
   React.useEffect(() => {
     let cancelled = false
@@ -338,6 +367,16 @@ export default function Inbox() {
     setComposeBusy(true)
     setComposeError(null)
     try {
+      const existing = findThreadByHandle(threads, target, selfHandle)
+      if (existing) {
+        setActiveConversationId(existing.id)
+        setExpandedThreadId(existing.id)
+        await sendMessage(existing.id, body)
+        setComposeDraft('')
+        setComposeHandle('@')
+        setComposeVisible(false)
+        return
+      }
       const thread = await contentService.startConversation(target, body)
       setThreads((current) => {
         const filtered = current.filter((item) => item.id !== thread.id)
@@ -346,8 +385,9 @@ export default function Inbox() {
         )
       })
       setActiveConversationId(thread.id)
+      setExpandedThreadId(thread.id)
       setComposeDraft('')
-      setComposeHandle('')
+      setComposeHandle('@')
       setComposeVisible(false)
     } catch (error) {
       const message =
@@ -461,7 +501,10 @@ export default function Inbox() {
                 To
                 <input
                   value={composeHandle}
-                  onChange={(event) => setComposeHandle(event.target.value)}
+                  onChange={(event) => {
+                    const value = event.target.value || '@'
+                    setComposeHandle(value.startsWith('@') ? value : `@${value}`)
+                  }}
                   placeholder="@friend"
                   disabled={composeBusy}
                 />
@@ -472,14 +515,29 @@ export default function Inbox() {
                 onClick={() => {
                   setComposeVisible(false)
                   setComposeDraft('')
-                  setComposeHandle('')
+                  setComposeHandle('@')
                   setComposeError(null)
                 }}
-                aria-label="Close composer"
+                aria-label="Minimize composer"
               >
-                ×
+                �
               </button>
             </div>
+            {composeHandle.length > 1 && mutualFriends.length ? (
+              <ul className={styles.handleSuggestions}>
+                {filterSuggestions(mutualFriends, composeHandle).map((friend) => (
+                  <li key={friend.id}>
+                    <button
+                      type="button"
+                      onClick={() => setComposeHandle(`@${normalizeHandle(friend.handle || friend.id)}`)}
+                    >
+                      <span className={styles.handleSuggestionName}>@{normalizeHandle(friend.handle || friend.id)}</span>
+                      <small className={styles.handleSuggestionMeta}>{friend.name}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <textarea
               value={composeDraft}
               onChange={(event) => setComposeDraft(event.target.value)}
@@ -538,7 +596,7 @@ export default function Inbox() {
             const title = pickThreadTitle(thread, selfHandle)
             const preview = thread.lastMessage?.body ?? 'Start the conversation.'
             const lastTimestamp = thread.lastMessage?.createdAt ?? thread.updatedAt
-            const timeAgo = `${formatDateTime(lastTimestamp)} • ${formatRelativeTime(lastTimestamp, true)}`
+            const timeAgo = formatRelativeTime(lastTimestamp, true)
             const badgeLetter = (title.replace(/^@/, '') || 'c')[0]?.toUpperCase() ?? 'C'
             const isSending = sendingThreadId === thread.id
             const targetHandle = resolveThreadTargetHandle(thread, selfHandle)
@@ -600,16 +658,17 @@ export default function Inbox() {
                         ) : null}
                         {messages.map((message) => {
                           const fromMe = isMessageFromCurrentUser(message, selfHandle)
-                          const messageTimestamp = `${formatDateTime(message.createdAt)} • ${formatRelativeTime(
-                            message.createdAt
-                          )}`
+                          const absoluteTime = formatDateTime(message.createdAt)
+                          const relativeTime = formatRelativeTime(message.createdAt, true)
                           return (
                             <div
                               key={message.id}
                               className={`${styles.bubble} ${fromMe ? styles.bubbleMe : styles.bubbleThem}`}
                             >
                               <span>{message.body}</span>
-                              <span className={styles.bubbleMeta}>{messageTimestamp}</span>
+                              <span className={styles.bubbleMeta}>
+                                {absoluteTime} • {relativeTime}
+                              </span>
                             </div>
                           )
                         })}
@@ -843,4 +902,34 @@ function resolveNotificationActorTarget(actor: NotificationSummary['actor']): st
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
   return fallback || 'creator'
+}
+
+function buildMutuals(following: ApiUser[], followers: ApiUser[]): ApiUser[] {
+  const followerHandles = new Set(followers.map((user) => normalizeHandle(user.handle || user.id)))
+  const followerIds = new Set(followers.map((user) => normalizeHandle(user.id)))
+  return following.filter((user) => {
+    const handle = normalizeHandle(user.handle || user.id)
+    const id = normalizeHandle(user.id)
+    return (handle && followerHandles.has(handle)) || (id && followerIds.has(id))
+  })
+}
+
+function filterSuggestions(mutuals: ApiUser[], currentHandle: string): ApiUser[] {
+  const query = normalizeHandle(currentHandle.replace(/^@/, ''))
+  if (!query) return mutuals.slice(0, 8)
+  return mutuals.filter((user) => normalizeHandle(user.handle || user.id).includes(query)).slice(0, 8)
+}
+
+function findThreadByHandle(threads: MessageThread[], targetHandle: string, selfHandle: string): MessageThread | null {
+  const normalizedTarget = normalizeHandle(targetHandle)
+  if (!normalizedTarget) return null
+  return (
+    threads.find((thread) =>
+      thread.participants.some(
+        (participant) =>
+          normalizeHandle(participant.handle || participant.name) === normalizedTarget &&
+          normalizeHandle(participant.handle || participant.name) !== selfHandle
+      )
+    ) ?? null
+  )
 }

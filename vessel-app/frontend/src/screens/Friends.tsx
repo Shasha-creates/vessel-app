@@ -1,54 +1,85 @@
-import React from "react"
-import { useNavigate } from "react-router-dom"
-import VideoCard from "../shared/VideoCard"
-import { contentService, type Video } from "../services/contentService"
-import { formatLikes } from "../services/mockData"
-import { CommentSheet, DonateSheet } from "../shared/VideoSheets"
-import styles from "./ForYou.module.css"
-
-type Props = {
-  filter?: (clip: Video) => boolean
-  refreshKey?: number
-}
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
+import VideoCard from '../shared/VideoCard'
+import { contentService, type Video, type ApiUser } from '../services/contentService'
+import { formatLikes } from '../services/mockData'
+import { CommentSheet, DonateSheet } from '../shared/VideoSheets'
+import styles from './Following.module.css'
 
 const normalizeProfileTarget = (video: Video): string => {
-  const candidate = (video.user.handle || video.user.id || "").trim()
+  const candidate = (video.user.handle || video.user.id || '').trim()
   if (candidate) return candidate
   const fallback = video.user.name
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-  return fallback || "creator"
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return fallback || 'creator'
 }
 
 const resolveUserId = (clip: Video): string => clip.user.handle || clip.user.id || normalizeProfileTarget(clip)
 
-export default function ForYou({ filter, refreshKey }: Props) {
+export default function Friends() {
   const [clips, setClips] = React.useState<Video[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [needsAuth, setNeedsAuth] = React.useState(false)
   const [index, setIndex] = React.useState(0)
   const [followLoading, setFollowLoading] = React.useState<string | null>(null)
   const [commentClip, setCommentClip] = React.useState<Video | null>(null)
   const [donateClip, setDonateClip] = React.useState<Video | null>(null)
+  const [mutualAccounts, setMutualAccounts] = React.useState<Set<string>>(new Set())
+  const [mutualHandles, setMutualHandles] = React.useState<Set<string>>(new Set())
+  const [error, setError] = React.useState<string | null>(null)
   const navigate = useNavigate()
   const trackRef = React.useRef<HTMLDivElement | null>(null)
   const rafRef = React.useRef<number | null>(null)
 
+  const filteredClips = React.useMemo(() => {
+    if (!mutualAccounts.size && !mutualHandles.size) return []
+    return clips.filter((clip) => {
+      const accountId = normalizeValue(clip.user.accountId || clip.user.id)
+      const handle = normalizeHandle(clip.user.handle || clip.user.id)
+      return (accountId && mutualAccounts.has(accountId)) || (handle && mutualHandles.has(handle))
+    })
+  }, [clips, mutualAccounts, mutualHandles])
+
   React.useEffect(() => {
     let mounted = true
 
-    async function loadFeed() {
-      const data = await contentService.fetchForYouFeed()
-      if (mounted) {
-        setClips(data)
-        setLoading(false)
+    async function load() {
+      try {
+        setError(null)
+        if (!contentService.isAuthenticated()) {
+          if (!mounted) return
+          setNeedsAuth(true)
+          setClips([])
+          setLoading(false)
+          return
+        }
+        const [followingProfiles, followerProfiles, followingFeed] = await Promise.all([
+          contentService.fetchFollowingProfiles(),
+          contentService.fetchFollowerProfiles(),
+          contentService.fetchFollowingFeed(),
+        ])
+        if (!mounted) return
+        setNeedsAuth(false)
+        setMutualAccounts(buildMutualAccountSet(followingProfiles ?? [], followerProfiles ?? []))
+        setMutualHandles(buildMutualHandleSet(followingProfiles ?? [], followerProfiles ?? []))
+        setClips(followingFeed ?? [])
+      } catch (err) {
+        if (!mounted) return
+        const message = err instanceof Error ? err.message : 'Unable to load friends feed.'
+        setError(message)
+        setClips([])
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
-    loadFeed()
-    const unsubscribe = contentService.subscribe(loadFeed)
-
+    load()
+    const unsubscribe = contentService.subscribe(load)
     return () => {
       mounted = false
       unsubscribe()
@@ -59,54 +90,21 @@ export default function ForYou({ filter, refreshKey }: Props) {
   }, [])
 
   React.useEffect(() => {
-    if (typeof refreshKey === 'undefined') {
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    contentService
-      .fetchForYouFeed()
-      .then((data) => {
-        if (cancelled) return
-        setClips(data)
-        setLoading(false)
-        setIndex(0)
-        const node = trackRef.current
-        if (node) {
-          node.scrollTo({ top: 0, behavior: 'smooth' })
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [refreshKey])
-
-  const visibleClips = React.useMemo(() => {
-    if (!filter) return clips
-    return clips.filter(filter)
-  }, [clips, filter])
-
-  React.useEffect(() => {
     setIndex(0)
     const node = trackRef.current
     if (node) {
       node.scrollTo({ top: 0 })
     }
-  }, [visibleClips.length])
+  }, [filteredClips.length])
 
   const scrollTo = React.useCallback(
     (target: number) => {
       const node = trackRef.current
       if (!node) return
-      const clampTarget = Math.max(0, Math.min(target, visibleClips.length - 1))
-      node.scrollTo({ top: clampTarget * node.clientHeight, behavior: "smooth" })
+      const clampTarget = Math.max(0, Math.min(target, filteredClips.length - 1))
+      node.scrollTo({ top: clampTarget * node.clientHeight, behavior: 'smooth' })
     },
-    [visibleClips.length]
+    [filteredClips.length]
   )
 
   const handleScroll = React.useCallback(() => {
@@ -117,23 +115,31 @@ export default function ForYou({ filter, refreshKey }: Props) {
       const node = trackRef.current
       if (!node) return
       const next = Math.round(node.scrollTop / node.clientHeight)
-      if (next !== index && next >= 0 && next < visibleClips.length) {
+      if (next !== index && next >= 0 && next < filteredClips.length) {
         setIndex(next)
       }
     })
-  }, [index, visibleClips.length])
+  }, [filteredClips.length, index])
 
   const handleKey = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "ArrowDown") {
+      if (event.key === 'ArrowDown') {
         event.preventDefault()
         scrollTo(index + 1)
-      } else if (event.key === "ArrowUp") {
+      } else if (event.key === 'ArrowUp') {
         event.preventDefault()
         scrollTo(index - 1)
       }
     },
     [index, scrollTo]
+  )
+
+  const openProfile = React.useCallback(
+    (clip: Video) => {
+      const target = normalizeProfileTarget(clip)
+      navigate(`/profile/${target}`)
+    },
+    [navigate]
   )
 
   const handleFollowAction = React.useCallback(
@@ -147,7 +153,7 @@ export default function ForYou({ filter, refreshKey }: Props) {
           await contentService.followUser(targetId)
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unable to update follow status. Please try again."
+        const message = err instanceof Error ? err.message : 'Unable to update follow status. Please try again.'
         window.alert(message)
       } finally {
         setFollowLoading((current) => (current === targetId ? null : current))
@@ -179,26 +185,22 @@ export default function ForYou({ filter, refreshKey }: Props) {
     }
   }, [])
 
-  const openProfile = React.useCallback(
-    (clip: Video) => {
-      const target = normalizeProfileTarget(clip)
-      navigate(`/profile/${target}`)
-    },
-    [navigate]
-  )
-
   if (loading) {
-    return (
-      <div className={styles.loading}>
-        Curating today's devotionals...
-      </div>
-    )
+    return <div className={styles.loading}>Gathering your friends' updates...</div>
   }
 
-  if (!visibleClips.length) {
+  if (needsAuth) {
+    return <div className={styles.empty}>Sign in to view friends-only clips.</div>
+  }
+
+  if (error) {
+    return <div className={styles.empty}>{error}</div>
+  }
+
+  if (!filteredClips.length) {
     return (
       <div className={styles.empty}>
-        Nothing to show here yet. Check back soon for new Godly Me moments.
+        Only mutual followers appear here. Follow people who follow you back to populate this feed.
       </div>
     )
   }
@@ -207,7 +209,7 @@ export default function ForYou({ filter, refreshKey }: Props) {
     <>
       <div className={styles.viewport}>
         <div className={styles.track} ref={trackRef} onScroll={handleScroll} onKeyDown={handleKey} tabIndex={0}>
-          {visibleClips.map((clip, clipIndex) => {
+          {filteredClips.map((clip, clipIndex) => {
             const userId = resolveUserId(clip)
             const isFollowingCreator = contentService.isFollowing(userId)
             const busy = followLoading === userId
@@ -233,22 +235,54 @@ export default function ForYou({ filter, refreshKey }: Props) {
                       })
                     }
                   }}
-                  onDonate={() => setDonateClip(clip)}
                   onFollow={() => handleFollowAction(clip)}
+                  onDonate={() => setDonateClip(clip)}
+                  onProfile={() => openProfile(clip)}
+                  followingCreator={isFollowingCreator}
                   followBusy={busy}
-                  isBookmarked={contentService.isBookmarked(clip.id)}
+                  active={isActive}
                   isLiked={contentService.isLiked(clip.id)}
-                  isFollowing={isFollowingCreator}
-                  onAuthorClick={openProfile}
-                  isActive={isActive}
                 />
               </section>
             )
           })}
         </div>
       </div>
-      {commentClip ? <CommentSheet clip={commentClip} onClose={() => setCommentClip(null)} /> : null}
-      {donateClip ? <DonateSheet clip={donateClip} onClose={() => setDonateClip(null)} /> : null}
+      <CommentSheet clip={commentClip} onClose={() => setCommentClip(null)} />
+      <DonateSheet clip={donateClip} onClose={() => setDonateClip(null)} />
     </>
   )
+}
+
+function normalizeValue(value?: string | null): string {
+  return (value || '').trim().toLowerCase()
+}
+
+function normalizeHandle(value?: string | null): string {
+  if (!value) return ''
+  return value.trim().replace(/^@/, '').toLowerCase()
+}
+
+function buildMutualAccountSet(following: ApiUser[], followers: ApiUser[]): Set<string> {
+  const followerIds = new Set(followers.map((user) => normalizeValue(user.id)))
+  const intersection = new Set<string>()
+  following.forEach((user) => {
+    const normalized = normalizeValue(user.id)
+    if (normalized && followerIds.has(normalized)) {
+      intersection.add(normalized)
+    }
+  })
+  return intersection
+}
+
+function buildMutualHandleSet(following: ApiUser[], followers: ApiUser[]): Set<string> {
+  const followerHandles = new Set(followers.map((user) => normalizeHandle(user.handle || user.id)))
+  const intersection = new Set<string>()
+  following.forEach((user) => {
+    const normalized = normalizeHandle(user.handle || user.id)
+    if (normalized && followerHandles.has(normalized)) {
+      intersection.add(normalized)
+    }
+  })
+  return intersection
 }

@@ -12,3 +12,16 @@ export function formatRelativeTime(iso: string, short = false): string {
   const days = Math.floor(hours / 24)
   return short ? `${days}d` : `${days}d ago`
 }
+
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown time'
+  }
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}

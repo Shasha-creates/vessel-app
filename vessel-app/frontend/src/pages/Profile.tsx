@@ -6,6 +6,7 @@ import {
   type ActiveProfile,
   type ApiUser,
   type FollowStats,
+  THUMBNAIL_PLACEHOLDER,
 } from "../services/contentService"
 import { formatLikes } from "../services/mockData"
 import styles from "./Profile.module.css"
@@ -491,13 +492,11 @@ export default function Profile() {
                 onKeyDown={(event) => handleGridKey(event, clip.id)}
                 aria-label={`Open ${clip.title}`}
               >
-                <video
-                  className={styles.gridVideo}
-                  src={clip.videoUrl}
-                  poster={clip.thumbnailUrl}
-                  muted
-                  loop
-                  playsInline
+                <img
+                  className={styles.gridThumb}
+                  src={clip.thumbnailUrl || THUMBNAIL_PLACEHOLDER}
+                  alt={clip.title}
+                  loading="lazy"
                 />
                 <div className={styles.gridOverlay}>
                   <span>Likes: {formatLikes(clip.likes)}</span>

@@ -85,8 +85,11 @@ export default function Settings() {
         </div>
       </header>
 
-      <section className={styles.gridSection}>
+      <div className={styles.settingsOverlay}>
         <div className={styles.settingsPanel}>
+          <button type="button" className={styles.settingsClose} onClick={goToProfile} aria-label="Close settings">
+            ×
+          </button>
           <div className={styles.settingsHeader}>
             <h3>Account settings</h3>
             <p>Manage how you appear across Godly Me.</p>
@@ -97,12 +100,6 @@ export default function Settings() {
             <SettingsRow label="Email" value={activeProfile.email || "Not set"} />
             <SettingsRow label="Handle" value={handle} />
             {church ? <SettingsRow label="Church / Community" value={church} /> : null}
-          </div>
-          <div className={styles.settingsNotice}>
-            <span>Return to your profile to see your latest updates.</span>
-            <button type="button" className={styles.settingsLinkButton} onClick={goToProfile}>
-              View profile
-            </button>
           </div>
           <div className={styles.settingsActions}>
             {isGuest ? (
@@ -126,7 +123,7 @@ export default function Settings() {
             )}
           </div>
         </div>
-      </section>
+      </div>
 
       {authMode ? (
         <AuthOverlay
