@@ -13,6 +13,7 @@ import ResetPassword from "./pages/ResetPassword"
 import Settings from "./pages/Settings"
 import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
+import { Media } from "./media"
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
 const NAV_HIDDEN_ROUTES = new Set([
@@ -174,47 +175,67 @@ function AdminGate({ onUnlock }: AdminGateProps) {
   return (
     <div className={styles.adminLock}>
       <div className={styles.adminPanel}>
-        <header className={styles.adminHeader}>
-          <p>Restricted Access</p>
-          <h1>Enter Admin Credentials</h1>
-          <p>This preview build is currently locked. Only authorized team members may proceed.</p>
-        </header>
+        <section className={styles.adminHero}>
+          <span className={styles.adminHeroBadge}>Preview build</span>
+          <div className={styles.adminHeroLogo}>
+            <img src={Media.icons.logo} alt="Godlyme logo" />
+          </div>
+          <h1>Admin lock enabled</h1>
+          <p>We keep pre-release builds gated while content, moderation, and payments finish review.</p>
+          <ul className={styles.adminHeroChecklist}>
+            <li>Live data protected</li>
+            <li>AI moderation calibration</li>
+            <li>Private testing sessions</li>
+          </ul>
+          <div className={styles.adminHeroFooter}>
+            <span>Build channel: <strong>Godlyme</strong></span>
+            <span>Status: <strong>Invite only</strong></span>
+          </div>
+        </section>
 
-        <form className={styles.adminForm} onSubmit={handleSubmit}>
-          <label className={styles.adminField}>
-            <span>Admin username</span>
-            <input
-              type="text"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="Username required"
-              disabled={busy}
-              autoComplete="username"
-            />
-          </label>
-          <label className={styles.adminField}>
-            <span>Passphrase</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder=""
-              disabled={busy}
-              autoComplete="current-password"
-            />
-          </label>
-          {error ? <p className={styles.adminError}>{error}</p> : null}
-          <button type="submit" disabled={busy}>
-            {busy ? "Verifying..." : "Unlock Preview"}
-          </button>
-        </form>
+        <section className={styles.adminPanelBody}>
+          <header className={styles.adminHeader}>
+            <p>Restricted Access</p>
+            <h2>Enter Admin Credentials</h2>
+            <p>Only authorized team members can unlock this session.</p>
+          </header>
 
-        <div className={styles.adminHelper}>
-          <p>Need access?</p>
-          <p>
-            Contact <a href="mailto:support@godlyme.com">support@godlyme.com</a> for the latest admin credentials.
-          </p>
-        </div>
+          <form className={styles.adminForm} onSubmit={handleSubmit}>
+            <label className={styles.adminField}>
+              <span>Admin username</span>
+              <input
+                type="text"
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                placeholder="Username required"
+                disabled={busy}
+                autoComplete="username"
+              />
+            </label>
+            <label className={styles.adminField}>
+              <span>Passphrase</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="•••••••••"
+                disabled={busy}
+                autoComplete="current-password"
+              />
+            </label>
+            {error ? <p className={styles.adminError}>{error}</p> : null}
+            <button type="submit" disabled={busy}>
+              {busy ? "Verifying..." : "Unlock preview"}
+            </button>
+          </form>
+
+          <div className={styles.adminHelper}>
+            <span>Need access?</span>
+            <p>
+              Email <a href="mailto:support@godlyme.com">support@godlyme.com</a> for the latest admin credentials.
+            </p>
+          </div>
+        </section>
       </div>
     </div>
   )

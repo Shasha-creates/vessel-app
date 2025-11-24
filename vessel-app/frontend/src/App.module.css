@@ -111,13 +111,122 @@
 }
 
 .adminPanel {
-  width: min(420px, 92vw);
-  background: var(--profile-surface, #fffdf6);
-  border: 1px solid rgba(92, 82, 56, 0.15);
-  border-radius: 28px;
-  padding: clamp(1.75rem, 4vw, 2.5rem);
+  width: min(940px, 94vw);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(92, 82, 56, 0.18);
+  border-radius: 36px;
+  padding: clamp(1.75rem, 3vw, 2.5rem);
   color: #20160e;
-  box-shadow: 0 35px 65px -40px rgba(50, 35, 20, 0.35);
+  box-shadow: 0 45px 90px -50px rgba(50, 35, 20, 0.5);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: clamp(1rem, 3vw, 2.5rem);
+  backdrop-filter: blur(18px);
+}
+
+.adminPanelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.adminHero {
+  border-radius: 28px;
+  padding: 1.75rem;
+  background: radial-gradient(circle at top, #25301c, #11160c);
+  color: #f6f2e5;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 100%;
+}
+
+.adminHero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% -10%, rgba(255, 199, 118, 0.4), transparent 60%);
+  pointer-events: none;
+}
+
+.adminHero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.adminHeroBadge {
+  align-self: flex-start;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  padding: 0.25rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.adminHeroLogo {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.adminHeroLogo img {
+  width: 75%;
+  height: 75%;
+  object-fit: contain;
+}
+
+.adminHero h1 {
+  margin: 0;
+  font-size: clamp(1.6rem, 4vw, 2.2rem);
+}
+
+.adminHero p {
+  margin: 0;
+  color: rgba(246, 242, 229, 0.85);
+}
+
+.adminHeroChecklist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.adminHeroChecklist li {
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.adminHeroChecklist li::before {
+  content: "*";
+  font-size: 0.8rem;
+  color: #f6c868;
+}
+
+.adminHeroFooter {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.9rem;
+  color: rgba(246, 242, 229, 0.85);
+}
+
+.adminHeroFooter strong {
+  color: #fff8e0;
 }
 
 .adminHeader {
@@ -135,7 +244,7 @@
   margin: 0;
 }
 
-.adminHeader h1 {
+.adminHeader h2 {
   margin: 0;
   font-size: clamp(1.6rem, 4vw, 2.1rem);
 }
