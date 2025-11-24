@@ -560,23 +560,27 @@
 .suggestedPanel {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.5rem; /* tighter spacing */
+}
+
+.uggestionCompact {
+  /* legacy name placeholder - not used directly */
 }
 
 .suggestionCard {
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 16px;
+  gap: 0.6rem; /* reduced gap */
+  padding: 0.6rem 0.75rem; /* tighter padding */
+  border-radius: 12px; /* slightly smaller radius */
   background: var(--inbox-card);
   color: #fff;
-  box-shadow: 0 18px 40px -30px rgba(21, 27, 19, 0.85);
+  box-shadow: 0 12px 28px -24px rgba(21, 27, 19, 0.85);
 }
 
 .suggestionAvatar {
-  width: 44px;
-  height: 44px;
+  width: 36px; /* smaller avatar */
+  height: 36px;
   border-radius: 50%;
   background: #050505;
   color: #fff;
@@ -584,7 +588,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   flex-shrink: 0;
   overflow: hidden;
 }
@@ -599,14 +603,14 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: 0.12rem; /* tighter grouping */
 }
 
 .suggestionTopRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .suggestionTextGroup {
@@ -616,42 +620,42 @@
 }
 
 .suggestionLabel {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: rgba(255, 255, 255, 0.75);
 }
 
 .suggestionTextGroup strong {
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   color: #fff;
 }
 
 .suggestionSummary {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.8rem;
 }
 
 .suggestionMeta {
   color: rgba(255, 255, 255, 0.7);
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .suggestionActionsCompact {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 
 .followButton {
-  border-radius: 30px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.6);
-  padding: 0.35rem 1rem;
+  padding: 0.28rem 0.8rem; /* tighter */
   background: transparent;
   color: #fff;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .followButton:not(:disabled):hover {
@@ -795,6 +799,50 @@
   text-align: center;
   color: var(--inbox-muted);
   background: rgba(255, 255, 255, 0.75);
+}
+
+/* Placeholder hint: slightly opaque dark text to invite sending a message */
+.composer textarea::placeholder,
+.composeForm input::placeholder {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+/* Locked '@' prefix input layout */
+.handleInputWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.handlePrefix {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(0,0,0,0.7);
+  font-weight: 700;
+}
+.handleInputWrap input {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0.45rem 0.6rem;
+  min-width: 120px;
+}
+
+/* Composer action group */
+.composeActions {
+  display: inline-flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.secondaryButton {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
 }
 
 .status p {

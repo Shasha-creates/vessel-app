@@ -12,7 +12,7 @@
   border: 1px dashed var(--border-muted);
   text-align: center;
   color: var(--text-secondary);
-  background: rgba(15, 18, 28, 0.88);
+  background: rgba(240, 236, 229, 0.95);
   margin: 2rem 1rem;
 }
 
@@ -29,6 +29,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.viewport {
+  background: #F0ECE5;
 }
 
 .track {

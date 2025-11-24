@@ -3,7 +3,7 @@
   min-height: calc(100vh - var(--bottom-nav-height));
   width: 100vw;
   overflow: hidden;
-  background: #000;
+  background: #F0ECE5;
 }
 
 .missing {
@@ -25,7 +25,7 @@
   width: 100vw;
   height: calc(100vh - var(--bottom-nav-height));
   object-fit: cover;
-  background: #0b0c12;
+  background: #F0ECE5;
   display: block;
 }
 

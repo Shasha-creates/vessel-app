@@ -2,7 +2,7 @@ import React from "react"
 import { formatLikes } from "../services/mockData"
 import { type Video, THUMBNAIL_PLACEHOLDER, VIDEO_PLACEHOLDER } from "../services/contentService"
 import styles from "./VideoCard.module.css"
-import { DonateIcon, ShareIcon, ProvidedLikeIcon } from "./icons"
+import { DonateIcon, ShareIcon, ProvidedLikeIcon, PlayIcon, PauseIcon } from "./icons"
 import { SvgBookmark, SvgComments, SvgVolume, SvgMute } from "./icons"
 
 type Props = {
@@ -46,6 +46,7 @@ export default function VideoCard({
   const videoRef = React.useRef<HTMLVideoElement | null>(null)
   const [videoSrc, setVideoSrc] = React.useState(() => safeVideoSrc(video.videoUrl))
   const [muted, setMuted] = React.useState(false)
+  const [userPaused, setUserPaused] = React.useState(false)
   const [expandDescription, setExpandDescription] = React.useState(false)
   const DESCRIPTION_PREVIEW_LIMIT = 20
   const posterUrl = React.useMemo(
@@ -74,12 +75,17 @@ export default function VideoCard({
     node.volume = shouldMute ? 0 : 1
 
     if (isActive) {
-      const playPromise = node.play()
-      if (!shouldMute && playPromise && typeof playPromise.catch === "function") {
-        playPromise.catch(() => {
-          node.muted = true
-          setMuted(true)
-        })
+      if (!userPaused) {
+        const playPromise = node.play()
+        if (!shouldMute && playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {
+            node.muted = true
+            setMuted(true)
+          })
+        }
+      } else {
+        // user has paused this clip; ensure it stays paused until they resume
+        node.pause()
       }
     } else {
       node.pause()
@@ -89,7 +95,25 @@ export default function VideoCard({
         // ignore reset failures on certain browsers
       }
     }
-  }, [isActive, muted])
+  }, [isActive, muted, userPaused])
+
+
+  // When user explicitly toggles play/pause, we set `userPaused` so autoplay won't resume unexpectedly
+  const togglePlayPause = React.useCallback(() => {
+    const node = videoRef.current
+    if (!node) return
+    if (node.paused) {
+      node.play().catch(() => {
+        // if play fails, fallback to muting and retry
+        node.muted = true
+        node.play().catch(() => undefined)
+      })
+      setUserPaused(false)
+    } else {
+      node.pause()
+      setUserPaused(true)
+    }
+  }, [])
 
   const toggleMute = React.useCallback(() => {
     setMuted((value) => !value)
@@ -107,6 +131,19 @@ export default function VideoCard({
     active?: boolean
     ariaPressed?: boolean
   }> = [
+    // Play / Pause control
+    (() => {
+      const isPaused = userPaused || (videoRef.current ? videoRef.current.paused : true)
+      return {
+        key: "play",
+        icon: isPaused ? <PlayIcon width={22} height={22} /> : <PauseIcon width={22} height={22} />,
+        count: "",
+        label: isPaused ? "Play" : "Pause",
+        onClick: () => togglePlayPause(),
+        active: !isPaused,
+        ariaPressed: !isPaused,
+      }
+    })(),
     {
       key: "sound",
       icon: muted || !isActive ? <SvgMute width={22} height={22} /> : <SvgVolume width={22} height={22} />,

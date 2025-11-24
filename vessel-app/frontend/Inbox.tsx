@@ -46,7 +46,7 @@ export default function Inbox() {
   const [notificationsLoading, setNotificationsLoading] = React.useState(false)
   const [notificationsError, setNotificationsError] = React.useState<string | null>(null)
   const [composeVisible, setComposeVisible] = React.useState(false)
-  const [composeHandle, setComposeHandle] = React.useState('@')
+  const [composeHandleRaw, setComposeHandleRaw] = React.useState('')
   const [composeDraft, setComposeDraft] = React.useState('')
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
@@ -93,9 +93,9 @@ export default function Inbox() {
       setTab('messages')
       setComposeVisible(true)
       if (handle) {
-        setComposeHandle(handle.startsWith('@') ? handle : `@${handle}`)
+        setComposeHandleRaw(handle.replace(/^@/, ''))
       } else {
-        setComposeHandle((current) => (current.trim() ? current : '@'))
+        setComposeHandleRaw((current) => (current.trim() ? current : ''))
       }
     },
     []
@@ -358,7 +358,7 @@ export default function Inbox() {
 
   async function startNewConversation(event: React.FormEvent) {
     event.preventDefault()
-    const target = composeHandle.trim().replace(/^@/, '').toLowerCase()
+    const target = composeHandleRaw.trim().replace(/^@/, '').toLowerCase()
     const body = composeDraft.trim()
     if (!target || !body) {
       setComposeError('Enter a handle and your message before sending.')
@@ -373,7 +373,7 @@ export default function Inbox() {
         setExpandedThreadId(existing.id)
         await sendMessage(existing.id, body)
         setComposeDraft('')
-        setComposeHandle('@')
+        setComposeHandleRaw('')
         setComposeVisible(false)
         return
       }
@@ -387,7 +387,7 @@ export default function Inbox() {
       setActiveConversationId(thread.id)
       setExpandedThreadId(thread.id)
       setComposeDraft('')
-      setComposeHandle('@')
+      setComposeHandleRaw('')
       setComposeVisible(false)
     } catch (error) {
       const message =
@@ -499,15 +499,16 @@ export default function Inbox() {
             <div className={styles.composeRow}>
               <label>
                 To
-                <input
-                  value={composeHandle}
-                  onChange={(event) => {
-                    const value = event.target.value || '@'
-                    setComposeHandle(value.startsWith('@') ? value : `@${value}`)
-                  }}
-                  placeholder="@friend"
-                  disabled={composeBusy}
-                />
+                <div className={styles.handleInputWrap}>
+                  <span className={styles.handlePrefix}>@</span>
+                  <input
+                    value={composeHandleRaw}
+                    onChange={(event) => setComposeHandleRaw(event.target.value)}
+                    placeholder="friend"
+                    disabled={composeBusy}
+                    aria-label="Recipient handle"
+                  />
+                </div>
               </label>
               <button
                 type="button"
@@ -515,21 +516,21 @@ export default function Inbox() {
                 onClick={() => {
                   setComposeVisible(false)
                   setComposeDraft('')
-                  setComposeHandle('@')
+                  setComposeHandleRaw('')
                   setComposeError(null)
                 }}
                 aria-label="Minimize composer"
               >
-                �
+                ×
               </button>
             </div>
-            {composeHandle.length > 1 && mutualFriends.length ? (
+            {composeHandleRaw.length >= 0 && mutualFriends.length ? (
               <ul className={styles.handleSuggestions}>
-                {filterSuggestions(mutualFriends, composeHandle).map((friend) => (
+                {filterSuggestions(mutualFriends, composeHandleRaw).map((friend) => (
                   <li key={friend.id}>
                     <button
                       type="button"
-                      onClick={() => setComposeHandle(`@${normalizeHandle(friend.handle || friend.id)}`)}
+                      onClick={() => setComposeHandleRaw(normalizeHandle(friend.handle || friend.id))}
                     >
                       <span className={styles.handleSuggestionName}>@{normalizeHandle(friend.handle || friend.id)}</span>
                       <small className={styles.handleSuggestionMeta}>{friend.name}</small>
@@ -546,9 +547,19 @@ export default function Inbox() {
               disabled={composeBusy}
             />
             {composeError ? <p className={styles.composeError}>{composeError}</p> : null}
-            <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandle.trim()}>
-              {composeBusy ? 'Sending...' : 'Send'}
-            </button>
+            <div className={styles.composeActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => {
+                setComposeVisible(false)
+                setComposeDraft('')
+                setComposeHandleRaw('')
+                setComposeError(null)
+              }} disabled={composeBusy}>
+                Cancel
+              </button>
+              <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandleRaw.trim()}>
+                {composeBusy ? 'Sending...' : 'Send'}
+              </button>
+            </div>
           </form>
         ) : (
           <button type="button" className={styles.composeButton} onClick={() => openComposer()}>
@@ -702,9 +713,19 @@ export default function Inbox() {
                           rows={2}
                           disabled={isSending}
                         />
-                        <button type="submit" disabled={!draftValue.trim() || isSending}>
-                          {isSending ? 'Sending...' : 'Send'}
-                        </button>
+                        <div className={styles.composeActions}>
+                          <button
+                            type="button"
+                            className={styles.secondaryButton}
+                            onClick={() => updateDraft(thread.id, '')}
+                            disabled={isSending}
+                          >
+                            Cancel
+                          </button>
+                          <button type="submit" disabled={!draftValue.trim() || isSending}>
+                            {isSending ? 'Sending...' : 'Send'}
+                          </button>
+                        </div>
                       </form>
                     </>
                   ) : null}
@@ -915,7 +936,7 @@ function buildMutuals(following: ApiUser[], followers: ApiUser[]): ApiUser[] {
 }
 
 function filterSuggestions(mutuals: ApiUser[], currentHandle: string): ApiUser[] {
-  const query = normalizeHandle(currentHandle.replace(/^@/, ''))
+  const query = normalizeHandle(currentHandle)
   if (!query) return mutuals.slice(0, 8)
   return mutuals.filter((user) => normalizeHandle(user.handle || user.id).includes(query)).slice(0, 8)
 }

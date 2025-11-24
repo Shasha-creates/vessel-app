@@ -1034,38 +1034,91 @@ function buildLocalSuggestions(limit: number): SuggestedConnection[] {
   const seen = new Set<string>()
   const suggestions: SuggestedConnection[] = []
 
-  for (const clip of normalizedSeedVideos) {
+  // Build a map of creators from the local library (uploads, seeds, remote feed)
+  const library = getLibrary()
+  const creatorsById = new Map<string, { id: string; handle: string; name: string; church?: string | null; photo?: string | null; tags: Set<string> }>()
+
+  for (const clip of library) {
     const creator = clip.user
-    const handleSource =
-      creator.handle || creator.accountId || creator.id || (creator.name ? slugifyDisplayName(creator.name) : '')
-    if (!handleSource) {
-      continue
-    }
+    const handleSource = creator.handle || creator.accountId || creator.id || (creator.name ? slugifyDisplayName(creator.name) : '')
+    if (!handleSource) continue
     const normalized = normalizeId(handleSource)
-    if (!normalized || normalized === activeId || following.has(normalized) || seen.has(normalized)) {
-      continue
-    }
-    seen.add(normalized)
-    suggestions.push({
+    if (!normalized) continue
+    const entry = creatorsById.get(normalized) || {
       id: creator.id || normalized,
       handle: handleSource,
-      name: creator.name || 'Vessel Creator',
+      name: creator.name || handleSource,
       church: creator.churchHome ?? null,
-      country: null,
-      photoUrl: creator.avatar ?? null,
-      summary:
-        creator.ministryRole && creator.churchHome
-          ? `${creator.ministryRole} • ${creator.churchHome}`
-          : creator.ministryRole || creator.churchHome || 'Active on Vessel',
-      mutualConnections: Math.max(1, Math.floor(Math.random() * 3) + 1),
-    })
-    if (suggestions.length >= limit) {
-      break
+      photo: creator.avatar ?? null,
+      tags: new Set<string>(),
+    }
+    ;(clip.tags || []).forEach((t) => entry.tags.add((t || '').toLowerCase()))
+    creatorsById.set(normalized, entry)
+  }
+
+  // Collect tags used by creators the active user already follows
+  const followedTagSet = new Set<string>()
+  for (const clip of library) {
+    const creatorHandle = clip.user.handle || clip.user.accountId || clip.user.id || ''
+    const normalizedCreator = normalizeId(creatorHandle)
+    if (following.has(normalizedCreator)) {
+      ;(clip.tags || []).forEach((t) => followedTagSet.add((t || '').toLowerCase()))
     }
   }
 
-  if (!suggestions.length) {
-    suggestions.push({
+  // Score each candidate creator by relevance to the active user
+  const scored: Array<{ score: number; candidate: SuggestedConnection }> = []
+  for (const [normalized, info] of creatorsById.entries()) {
+    if (!normalized || normalized === activeId || following.has(normalized) || seen.has(normalized)) continue
+    seen.add(normalized)
+
+    let score = 0
+    // Higher priority if from same church
+    if (info.church && activeProfile.church && info.church.trim() && info.church === activeProfile.church) {
+      score += 4
+    }
+    // small boost for same country
+    if (info.country && activeProfile.country && info.country === activeProfile.country) {
+      score += 1
+    }
+
+    // tag overlap with people the user already follows
+    let tagOverlap = 0
+    for (const t of info.tags) {
+      if (followedTagSet.has(t)) tagOverlap += 1
+    }
+    score += tagOverlap
+
+    // base relevance bump if they have any tags
+    if (info.tags.size > 0) score += 1
+
+    // add a small random factor to vary suggestions a bit
+    score += Math.max(0, Math.floor(Math.random() * 2))
+
+    const mutualConnections = Math.max(1, Math.min(9, Math.round(score)))
+
+    scored.push({
+      score,
+      candidate: {
+        id: info.id,
+        handle: info.handle,
+        name: info.name,
+        church: info.church ?? null,
+        country: null,
+        photoUrl: info.photo ?? null,
+        summary: info.church || 'Active on Vessel',
+        mutualConnections,
+      },
+    })
+  }
+
+  // sort by score desc
+  scored.sort((a, b) => b.score - a.score)
+
+  const results = scored.slice(0, limit).map((s) => s.candidate as SuggestedConnection)
+
+  if (!results.length) {
+    results.push({
       id: 'saintmichaels',
       handle: 'saintmichaels',
       name: 'Saint Michaels',
@@ -1077,7 +1130,7 @@ function buildLocalSuggestions(limit: number): SuggestedConnection[] {
     })
   }
 
-  return suggestions
+  return results
 }
 
 async function hashEmailForMatch(value: string): Promise<string> {

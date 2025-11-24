@@ -137,6 +137,18 @@ export const PlusIcon = (props: BaseIconProps) => (
   </SvgIcon>
 )
 
+export const PlayIcon = (props: BaseIconProps) => (
+  <SvgIcon viewBox="0 0 24 24" stroke="none" fill="currentColor" {...props}>
+    <path d="M5 3.868v16.264A1 1 0 0 0 6.56 21.6L20.42 12 6.56 2.4A1 1 0 0 0 5 3.868z" />
+  </SvgIcon>
+)
+
+export const PauseIcon = (props: BaseIconProps) => (
+  <SvgIcon viewBox="0 0 24 24" stroke="none" fill="currentColor" {...props}>
+    <path d="M6 4h4v16H6zM14 4h4v16h-4z" />
+  </SvgIcon>
+)
+
 // Simple image-based icon wrapper for vendor-provided SVG assets in `public/media/icons`
 type ImgIconProps = React.ImgHTMLAttributes<HTMLImageElement> & { src?: string }
 
