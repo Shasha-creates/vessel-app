@@ -85,51 +85,53 @@ export default function Settings() {
         </div>
       </header>
 
-      <div className={styles.settingsOverlay}>
-        <div className={styles.settingsPanel}>
-          <button type="button" className={styles.settingsClose} onClick={goToProfile} aria-label="Close settings">
-            ×
-          </button>
-          <div className={styles.settingsHeader}>
-            <h3>Account settings</h3>
-            <p>Manage how you appear across Godly Me.</p>
-          </div>
-          <div className={styles.settingsSummary}>
-            <SettingsRow label="Status" value={isGuest ? "Browsing as guest" : "Signed in"} />
-            <SettingsRow label="Display name" value={displayName} />
-            <SettingsRow label="Email" value={activeProfile.email || "Not set"} />
-            <SettingsRow label="Handle" value={handle} />
-            {church ? <SettingsRow label="Church / Community" value={church} /> : null}
-          </div>
-          <div className={styles.settingsActions}>
-            {isGuest ? (
-              <>
-                <button type="button" className={styles.settingsPrimary} onClick={() => updateMode("signup")}>
-                  Create profile
-                </button>
-                <button type="button" className={styles.settingsSecondary} onClick={() => updateMode("login")}>
-                  Sign in
-                </button>
-              </>
-            ) : (
-              <>
-                <button type="button" className={styles.settingsPrimary} onClick={() => updateMode("signup")}>
-                  Edit profile
-                </button>
-                <button type="button" className={styles.settingsSecondary} onClick={handleSignOut}>
-                  Sign out
-                </button>
-              </>
-            )}
+      {!authMode ? (
+        <div className={styles.settingsOverlay}>
+          <div className={styles.settingsPanel}>
+            <button type="button" className={styles.settingsClose} onClick={goToProfile} aria-label="Close settings">
+              ×
+            </button>
+            <div className={styles.settingsHeader}>
+              <h3>Account settings</h3>
+              <p>Manage how you appear across Godly Me.</p>
+            </div>
+            <div className={styles.settingsSummary}>
+              <SettingsRow label="Status" value={isGuest ? "Browsing as guest" : "Signed in"} />
+              <SettingsRow label="Display name" value={displayName} />
+              <SettingsRow label="Email" value={activeProfile.email || "Not set"} />
+              <SettingsRow label="Handle" value={handle} />
+              {church ? <SettingsRow label="Church / Community" value={church} /> : null}
+            </div>
+            <div className={styles.settingsActions}>
+              {isGuest ? (
+                <>
+                  <button type="button" className={styles.settingsPrimary} onClick={() => updateMode("signup")}>
+                    Create profile
+                  </button>
+                  <button type="button" className={styles.settingsSecondary} onClick={() => updateMode("login")}>
+                    Sign in
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className={styles.settingsPrimary} onClick={() => updateMode("signup")}>
+                    Edit profile
+                  </button>
+                  <button type="button" className={styles.settingsSecondary} onClick={handleSignOut}>
+                    Sign out
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       {authMode ? (
         <AuthOverlay
           mode={authMode}
           activeProfile={activeProfile}
-          onClose={() => updateMode(null)}
+          onClose={goToProfile}
           onSwitchMode={updateMode}
           onComplete={handleComplete}
         />

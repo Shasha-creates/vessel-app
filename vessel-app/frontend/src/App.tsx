@@ -13,11 +13,8 @@ import ResetPassword from "./pages/ResetPassword"
 import Settings from "./pages/Settings"
 import Inbox from "./pages/Inbox"
 import styles from "./App.module.css"
-<<<<<<< HEAD
 import { Media } from "./media"
-=======
 import { contentService } from "./services/contentService"
->>>>>>> 08f56aa019a44f74322feefb42facee1fd422397
 
 const ADMIN_STORAGE_KEY = "vessel_admin_access"
 const NAV_HIDDEN_ROUTES = new Set([
@@ -132,15 +129,15 @@ export default function App() {
 
           <NavLink
             to="/inbox"
-          className={({ isActive }) =>
-            isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
-          }
-        >
-          <span className={styles.bottomIconCircle}>I</span>
-          <span className={styles.badgedLabel}>
-            Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
-          </span>
-        </NavLink>
+            className={({ isActive }) =>
+              isActive ? `${styles.bottomLink} ${styles.bottomLinkActive}` : styles.bottomLink
+            }
+          >
+            <span className={styles.bottomIconCircle}>I</span>
+            <span className={styles.badgedLabel}>
+              Inbox {unreadBadge ? <span className={styles.badge}>{unreadBadge}</span> : null}
+            </span>
+          </NavLink>
 
           <NavLink
             to="/profile/me"
@@ -208,8 +205,12 @@ function AdminGate({ onUnlock }: AdminGateProps) {
             <li>Private testing sessions</li>
           </ul>
           <div className={styles.adminHeroFooter}>
-            <span>Build channel: <strong>Godlyme</strong></span>
-            <span>Status: <strong>Invite only</strong></span>
+            <span>
+              Build channel: <strong>Godlyme</strong>
+            </span>
+            <span>
+              Status: <strong>Invite only</strong>
+            </span>
           </div>
         </section>
 
@@ -238,7 +239,7 @@ function AdminGate({ onUnlock }: AdminGateProps) {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="•••••••••"
+                placeholder="Passphrase"
                 disabled={busy}
                 autoComplete="current-password"
               />
