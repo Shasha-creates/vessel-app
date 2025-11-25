@@ -9,20 +9,32 @@ import {
 } from '../services/contentService'
 import { formatLikes } from '../services/mockData'
 import { formatRelativeTime } from '../utils/time'
-import { ShareIcon, ProvidedLikeIcon } from '../shared/icons'
-import { SvgComments, SvgBookmark } from '../shared/icons'
+import {
+  ShareIcon,
+  ProvidedLikeIcon,
+  DonateIcon,
+  PlayIcon,
+  PauseIcon,
+  SvgComments,
+  SvgBookmark,
+  SvgVolume,
+  SvgMute,
+} from '../shared/icons'
 import styles from './Watch.module.css'
 
 export default function Watch() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [clip, setClip] = useState<Video | undefined>(undefined)
+  const videoRef = React.useRef<HTMLVideoElement | null>(null)
   const [comments, setComments] = useState<VideoComment[]>([])
   const [loadingComments, setLoadingComments] = useState(true)
   const [commentsError, setCommentsError] = useState<string | null>(null)
   const [commentBusy, setCommentBusy] = useState(false)
   const [text, setText] = useState('')
   const [showComments, setShowComments] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [muted, setMuted] = useState(true)
 
   const likes = useMemo(() => {
     if (!clip) return '0'
@@ -58,6 +70,32 @@ export default function Watch() {
       cancelled = true
     }
   }, [id])
+
+  useEffect(() => {
+    setMuted(true)
+    const player = videoRef.current
+    if (!player) return
+    player
+      .play()
+      .then(() => {
+        player.muted = true
+        player.volume = 0
+        setIsPlaying(!player.paused)
+      })
+      .catch(() => setIsPlaying(!player.paused))
+  }, [clip])
+
+  useEffect(() => {
+    const player = videoRef.current
+    if (!player) return
+    player.muted = muted
+    player.volume = muted ? 0 : 1
+    if (isPlaying) {
+      player.play().catch(() => setIsPlaying(!player.paused))
+    } else {
+      player.pause()
+    }
+  }, [muted, isPlaying])
 
   if (!clip) {
     return <div className={styles.missing}>We couldn't find that Vessel moment.</div>
@@ -127,35 +165,117 @@ export default function Watch() {
     } else {
       window.open(shareUrl, '_blank')
     }
+    setClip((current) => (current ? { ...current, shares: (current.shares ?? 0) + 1 } : current))
   }
+
+  function handleGift() {
+    if (!clip) return
+    contentService.recordDonation(clip.id, 1)
+    setClip((current) => (current ? { ...current, donations: (current.donations ?? 0) + 1 } : current))
+  }
+
+  function handlePlayToggle() {
+    const player = videoRef.current
+    if (!player) return
+    if (player.paused) {
+      player.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(!player.paused))
+    } else {
+      player.pause()
+      setIsPlaying(false)
+    }
+  }
+
+  const actions = [
+    {
+      key: 'play',
+      icon: isPlaying ? <PauseIcon width={22} height={22} /> : <PlayIcon width={22} height={22} />,
+      count: '',
+      label: isPlaying ? 'Pause' : 'Play',
+      onClick: handlePlayToggle,
+      active: isPlaying,
+      ariaPressed: isPlaying,
+    },
+    {
+      key: 'sound',
+      icon: muted ? <SvgMute width={22} height={22} /> : <SvgVolume width={22} height={22} />,
+      count: muted ? 'Off' : 'On',
+      label: 'Sound',
+      onClick: () => setMuted((value) => !value),
+      active: !muted,
+      ariaPressed: !muted,
+    },
+    {
+      key: 'like',
+      icon: <ProvidedLikeIcon width={22} height={22} />,
+      count: likes,
+      label: 'Likes',
+      onClick: toggleLike,
+      active: isLiked,
+      ariaPressed: isLiked,
+    },
+    {
+      key: 'comment',
+      icon: <SvgComments width={22} height={22} />,
+      count: comments.length.toString(),
+      label: 'Comments',
+      onClick: () => setShowComments(true),
+    },
+    {
+      key: 'save',
+      icon: <SvgBookmark width={22} height={22} />,
+      count: (clip.bookmarks ?? 0).toString(),
+      label: 'Save',
+      onClick: toggleBookmark,
+      active: isBookmarked,
+      ariaPressed: isBookmarked,
+    },
+    {
+      key: 'donate',
+      icon: <DonateIcon width={22} height={22} />,
+      count: (clip.donations ?? 0).toString(),
+      label: 'Gift',
+      onClick: handleGift,
+    },
+    {
+      key: 'share',
+      icon: <ShareIcon width={22} height={22} />,
+      count: (clip.shares ?? 0).toString(),
+      label: 'Share',
+      onClick: shareClip,
+    },
+  ]
 
   return (
     <div className={styles.watch}>
       <div className={styles.viewer}>
         <video
+          ref={videoRef}
           className={styles.player}
           src={clip.videoUrl || VIDEO_PLACEHOLDER}
           poster={clip.thumbnailUrl || THUMBNAIL_PLACEHOLDER}
-          controls
+          autoPlay
+          muted={muted}
           playsInline
+          loop
+          controls={false}
         />
         <div className={styles.actionsRail}>
-          <button type="button" onClick={toggleLike} aria-pressed={isLiked} data-key="like" className={isLiked ? undefined : undefined}>
-            <ProvidedLikeIcon width={28} height={28} />
-            <span>{likes}</span>
-          </button>
-          <button type="button" onClick={() => setShowComments(true)}>
-            <SvgComments width={28} height={28} />
-            <span>{comments.length}</span>
-          </button>
-          <button type="button" onClick={toggleBookmark} aria-pressed={isBookmarked}>
-            <SvgBookmark width={28} height={28} />
-            <span>{clip.bookmarks ?? 0}</span>
-          </button>
-          <button type="button" onClick={shareClip}>
-            <ShareIcon width={28} height={28} />
-            <span>Share</span>
-          </button>
+          {actions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              data-key={action.key}
+              className={`${styles.actionButton} ${action.active ? styles.actionButtonActive : ''}`}
+              onClick={action.onClick}
+              aria-label={action.label}
+              aria-pressed={action.ariaPressed}
+            >
+              <span className={styles.actionIcon} aria-hidden="true">
+                {action.icon}
+              </span>
+              <span className={styles.actionCount}>{action.count}</span>
+            </button>
+          ))}
         </div>
         <div className={styles.meta}>
           <div className={styles.metaHeader}>
@@ -192,7 +312,7 @@ export default function Watch() {
                 {comments.length ? `${comments.length.toLocaleString()} comments` : 'Comments'}
               </span>
               <button type="button" className={styles.close} onClick={() => setShowComments(false)} aria-label="Close comments">
-                ×
+                A-
               </button>
             </div>
             <div className={styles.commentList}>
@@ -208,7 +328,7 @@ export default function Watch() {
                     <div className={styles.commentTop}>
                       <span className={styles.commentAuthor}>{comment.user.name}</span>
                       <span className={styles.commentMeta}>
-                        {comment.user.handle ? `@${comment.user.handle}` : 'listener'} · {formatRelativeTime(comment.createdAt)}
+                        {comment.user.handle ? `@${comment.user.handle}` : 'listener'} � {formatRelativeTime(comment.createdAt)}
                       </span>
                     </div>
                     <p>{comment.body}</p>
@@ -231,4 +351,11 @@ export default function Watch() {
       ) : null}
     </div>
   )
+}
+
+function formatCount(value: number) {
+  if (!value) return '0'
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (value >= 1_000) return `${(value / 1_000).toFixed(1).replace(/\.0$/, '')}K`
+  return `${value}`
 }

@@ -47,6 +47,84 @@ const normalizedSeedVideos: Video[] = seedVideos.map((clip) => ({
   thumbnailUrl: resolveThumbnailUrl(clip.thumbnailUrl, clip.videoUrl),
 }))
 
+function normalizeHandleMatch(value?: string | null): string {
+  return (value || '').trim().replace(/^@/, '').toLowerCase()
+}
+
+async function searchLocal(query: string, limit = 20) {
+  const trimmed = (query || '').trim().toLowerCase()
+  if (!trimmed) return { accounts: [], videos: [], categories: [] }
+
+  const isHandleQuery = trimmed.startsWith('@')
+  const key = isHandleQuery ? trimmed.slice(1) : trimmed
+
+  const library = getLibrary()
+  const videoMatches = library
+    .filter((clip) => {
+      if (isHandleQuery) {
+        const handle = clip.user.handle || clip.user.accountId || clip.user.id || ''
+        return handle.toLowerCase().includes(key)
+      }
+      return (
+        (clip.title || '').toLowerCase().includes(key) ||
+        (clip.description || '').toLowerCase().includes(key) ||
+        (clip.tags || []).some((t) => (t || '').toLowerCase().includes(key)) ||
+        (clip.user.name || '').toLowerCase().includes(key) ||
+        (clip.user.handle || '').toLowerCase().includes(key)
+      )
+    })
+    .slice(0, limit)
+
+  const creatorsByHandle = new Map<
+    string,
+    { id: string; handle?: string; name?: string; photoUrl?: string | null; church?: string | null }
+  >()
+  for (const clip of library) {
+    const handle = (clip.user.handle || clip.user.id || clip.user.accountId || '').trim()
+    if (!handle) continue
+    const k = handle.toLowerCase()
+    if (!creatorsByHandle.has(k)) {
+      creatorsByHandle.set(k, {
+        id: clip.user.id || k,
+        handle: clip.user.handle || undefined,
+        name: clip.user.name || clip.user.handle || clip.user.id,
+        photoUrl: clip.user.avatar || null,
+        church: clip.user.churchHome ?? null,
+      })
+    }
+  }
+  const allCreators = Array.from(creatorsByHandle.values())
+  const accountMatches = allCreators
+    .filter((c) => {
+      if (isHandleQuery) return (c.handle || c.id || '').toLowerCase().includes(key)
+      return (
+        (c.handle || c.id || '').toLowerCase().includes(key) ||
+        (c.name || '').toLowerCase().includes(key) ||
+        (c.church || '').toLowerCase().includes(key)
+      )
+    })
+    .slice(0, limit)
+
+  const categories = new Set<string>()
+  for (const clip of library) {
+    if (clip.category) categories.add((clip.category || '').toLowerCase())
+    ;(clip.tags || []).forEach((t) => {
+      if (t && t.trim()) categories.add(t.toLowerCase())
+    })
+  }
+  const categoryMatches = Array.from(categories).filter((c) => c.includes(key)).slice(0, limit)
+
+  const accounts = accountMatches.map((c) => ({
+    id: c.id,
+    handle: c.handle || c.id,
+    name: c.name || c.handle || c.id,
+    photoUrl: c.photoUrl ?? null,
+    church: c.church ?? null,
+  }))
+
+  return { accounts, videos: videoMatches, categories: categoryMatches }
+}
+
 function resolveThumbnailUrl(candidate?: string | null, fallbackVideo?: string | null): string {
   const trimmedCandidate = (candidate ?? '').trim()
   if (trimmedCandidate && !isLikelyVideoAsset(trimmedCandidate)) {
@@ -516,10 +594,6 @@ function normalizeId(value: string): string {
   return value.toLowerCase().replace(/\s+/g, '-')
 }
 
-function normalizeHandleMatch(value: string): string {
-  return value.trim().replace(/^@/, '').toLowerCase()
-}
-
 function slugifyDisplayName(value: string): string {
   const base = value
     .trim()
@@ -732,6 +806,7 @@ function reviveStoredUpload(stored: StoredUpload): Video {
 }
 
 function updateActiveProfile(partial: ActiveProfileUpdate): ActiveProfile {
+  const previousId = getActiveUserId()
   const name = partial.name?.trim().length ? partial.name.trim() : getActiveUserName()
   const id = partial.id?.trim().toLowerCase().length ? partial.id.trim().toLowerCase() : getActiveUserId()
   const church = partial.church === undefined ? getActiveUserChurch() : partial.church?.trim() ?? ''
@@ -763,14 +838,15 @@ function updateActiveProfile(partial: ActiveProfileUpdate): ActiveProfile {
     } else {
       window.localStorage.removeItem(ACTIVE_USER_EMAIL_KEY)
     }
-    if (isVerified) {
-      window.localStorage.setItem(ACTIVE_USER_VERIFIED_KEY, 'true')
-    } else {
-      window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
-    }
+  if (isVerified) {
+    window.localStorage.setItem(ACTIVE_USER_VERIFIED_KEY, 'true')
+  } else {
+    window.localStorage.removeItem(ACTIVE_USER_VERIFIED_KEY)
   }
+ }
 
   const profile: ActiveProfile = { id, name, church, country, email, photo, isVerified }
+  syncActiveProfileAcrossLibrary(profile, previousId)
   notify()
   return profile
 }
@@ -817,6 +893,56 @@ function signOutToGuest(): ActiveProfile {
     email: null,
     isVerified: false,
   })
+}
+
+function isSameUser(
+  candidate: { id?: string | null; handle?: string | null; accountId?: string | null },
+  profile: ActiveProfile,
+  previousId?: string
+): boolean {
+  const value = candidate.handle || candidate.id || candidate.accountId || ''
+  const normalized = normalizeHandleMatch(value)
+  const normalizedActive = normalizeHandleMatch(profile.id)
+  const normalizedPrev = normalizeHandleMatch(previousId || '')
+  return Boolean(normalized) && (normalized === normalizedActive || (normalizedPrev && normalized === normalizedPrev))
+}
+
+function syncUserFields<
+  T extends {
+    id?: string | null
+    handle?: string | null
+    accountId?: string | null
+    name?: string | null
+    churchHome?: string | null
+    avatar?: string | null
+    photoUrl?: string | null
+    church?: string | null
+  }
+>(user: T, profile: ActiveProfile, previousId?: string): T {
+  if (!isSameUser(user, profile, previousId)) {
+    return user
+  }
+  return {
+    ...user,
+    id: profile.id || user.id || undefined,
+    handle: profile.id || user.handle || undefined,
+    accountId: user.accountId ?? profile.id ?? undefined,
+    name: profile.name || user.name || undefined,
+    churchHome: profile.church ?? user.churchHome ?? user.church ?? undefined,
+    church: profile.church ?? user.church ?? undefined,
+    avatar: profile.photo ?? user.avatar ?? undefined,
+    photoUrl: profile.photo ?? user.photoUrl ?? undefined,
+  }
+}
+
+function syncActiveProfileAcrossLibrary(profile: ActiveProfile, previousId?: string) {
+  const patchVideoUser = (video: Video): Video => {
+    const patchedUser = syncUserFields(video.user, profile, previousId)
+    if (patchedUser === video.user) return video
+    return { ...video, user: patchedUser }
+  }
+  remoteFeed = remoteFeed.map(patchVideoUser)
+  uploads = uploads.map(patchVideoUser)
 }
 
 async function createAccount(input: {
@@ -1209,18 +1335,24 @@ function mapApiVideo(video: ApiFeedVideo): Video {
     if (isLikelyVideoAsset(thumbAsVideo)) return thumbAsVideo
     return DEFAULT_VIDEO_PLACEHOLDER
   })()
-  return {
-    id: video.id,
-    title: video.title,
-    description: video.description ?? '',
-    user: {
+  const activeProfile = getActiveProfile()
+  const user = syncUserFields(
+    {
       id: video.user.handle || video.user.id,
       handle: video.user.handle ?? undefined,
       accountId: video.user.id,
       name: video.user.name || video.user.handle || video.user.id,
       churchHome: video.user.church ?? undefined,
       avatar: video.user.photoUrl ?? undefined,
+      photoUrl: video.user.photoUrl ?? undefined,
     },
+    activeProfile
+  )
+  return {
+    id: video.id,
+    title: video.title,
+    description: video.description ?? '',
+    user,
     videoUrl: chosenVideoUrl,
     thumbnailUrl: resolveThumbnailUrl(video.thumbnailUrl, video.videoUrl),
     category: (video.category as ContentCategory) || 'testimony',
@@ -1254,28 +1386,30 @@ function mapApiNotification(notification: ApiNotificationSummary): NotificationS
 }
 
 function mapApiComment(comment: ApiVideoComment): VideoComment {
+  const user = syncUserFields(comment.user, getActiveProfile())
   return {
     id: comment.id,
     videoId: comment.videoId,
     body: comment.body,
     createdAt: comment.createdAt,
-    user: comment.user,
+    user,
   }
 }
 
 function mapApiThreadMessage(message: ApiThreadMessage): ThreadMessage {
+  const sender = syncUserFields(message.sender, getActiveProfile())
   return {
     id: message.id,
     threadId: message.threadId,
     body: message.body,
     createdAt: message.createdAt,
     sender: {
-      id: message.sender.id,
-      handle: message.sender.handle,
-      name: message.sender.name,
-      church: message.sender.church ?? undefined,
-      country: message.sender.country ?? undefined,
-      photoUrl: message.sender.photoUrl ?? undefined,
+      id: sender.id,
+      handle: sender.handle,
+      name: sender.name,
+      church: sender.church ?? undefined,
+      country: sender.country ?? undefined,
+      photoUrl: sender.photoUrl ?? undefined,
     },
   }
 }
@@ -1284,14 +1418,17 @@ function mapApiThread(thread: ApiThreadSummary): MessageThread {
   return {
     id: thread.id,
     subject: thread.subject ?? undefined,
-    participants: thread.participants.map((participant) => ({
-      id: participant.id,
-      handle: participant.handle,
-      name: participant.name,
-      church: participant.church ?? undefined,
-      country: participant.country ?? undefined,
-      photoUrl: participant.photoUrl ?? undefined,
-    })),
+    participants: thread.participants.map((participant) => {
+      const patched = syncUserFields(participant, getActiveProfile())
+      return {
+        id: patched.id,
+        handle: patched.handle,
+        name: patched.name,
+        church: patched.church ?? undefined,
+        country: patched.country ?? undefined,
+        photoUrl: patched.photoUrl ?? undefined,
+      }
+    }),
     lastMessage: thread.lastMessage ? mapApiThreadMessage(thread.lastMessage) : null,
     unreadCount: thread.unreadCount ?? 0,
     updatedAt: thread.updatedAt,
@@ -1505,6 +1642,31 @@ export const contentService = {
     }
     notify()
     return bookmarkedIds.has(clipId)
+  },
+  async search(query: string, limit = 20) {
+    const trimmed = (query || '').trim()
+    if (!trimmed) return { accounts: [], videos: [], categories: [] }
+    if (API_BASE_URL) {
+      try {
+        const payload = await postJson<any>(`/api/search`, { q: trimmed, limit }, false).catch(() => null)
+        if (payload && (payload.accounts || payload.videos || payload.categories)) {
+          return payload
+        }
+      } catch {
+        // ignore and fall through to local search
+      }
+    }
+    const local = await searchLocal(trimmed, limit)
+    const hasRemote = remoteFeed && remoteFeed.length > 0
+    if (!hasRemote && !local.accounts.length && !local.videos.length && !local.categories.length) {
+      try {
+        await contentService.fetchForYouFeed()
+      } catch {
+        // ignore
+      }
+      return await searchLocal(trimmed, limit)
+    }
+    return local
   },
   async fetchForYouFeed(): Promise<Video[]> {
     try {
