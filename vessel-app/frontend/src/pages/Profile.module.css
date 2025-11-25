@@ -201,17 +201,12 @@
 }
 
 .gridContent {
+  /* This creates a 3-column grid with equal-width columns */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-  gap: 0.4rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
   width: 100%;
 }
-
-.gridContentVideos {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-}
-
 .gridItem {
   position: relative;
   border: none;
@@ -858,10 +853,3 @@
     flex-direction: column;
   }
 }
-
-
-
-
-
-
-

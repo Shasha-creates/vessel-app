@@ -67,6 +67,136 @@ export async function ensureMessagingTables(): Promise<void> {
     );
   `)
   await pool.query('CREATE INDEX IF NOT EXISTS messages_thread_id_idx ON messages(thread_id, created_at DESC);')
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS message_requests (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `)
+  // Backfill columns if the table already existed without the newer fields.
+  await pool.query('ALTER TABLE message_requests ADD COLUMN IF NOT EXISTS sender_id UUID REFERENCES users(id) ON DELETE CASCADE;')
+  await pool.query('ALTER TABLE message_requests ADD COLUMN IF NOT EXISTS recipient_id UUID REFERENCES users(id) ON DELETE CASCADE;')
+  await pool.query('ALTER TABLE message_requests ADD COLUMN IF NOT EXISTS body TEXT;')
+  await pool.query('ALTER TABLE message_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();')
+}
+
+export type MessageRequestRow = {
+  id: string
+  sender_id: string
+  recipient_id: string
+  body: string
+  created_at: Date
+}
+
+export async function createMessageRequest(senderId: string, recipientId: string, body: string): Promise<MessageRequestRow> {
+  if (!body.trim()) throw httpError('Message body is required for a request.', 400)
+  const result = await pool.query(
+    `
+      INSERT INTO message_requests (sender_id, recipient_id, body)
+      VALUES ($1::uuid, $2::uuid, $3)
+      RETURNING id, sender_id, recipient_id, body, created_at
+    `,
+    [senderId, recipientId, body]
+  )
+  return result.rows[0]
+}
+
+export async function listIncomingMessageRequests(recipientId: string): Promise<MessageRequestRow[]> {
+  const result = await pool.query(
+    `
+      SELECT id, sender_id, recipient_id, body, created_at
+      FROM message_requests
+      WHERE recipient_id = $1
+      ORDER BY created_at DESC
+    `,
+    [recipientId]
+  )
+  return result.rows
+}
+
+export async function getMessageRequest(requestId: string): Promise<MessageRequestRow | null> {
+  const result = await pool.query('SELECT id, sender_id, recipient_id, body, created_at FROM message_requests WHERE id = $1 LIMIT 1', [
+    requestId,
+  ])
+  return result.rowCount ? result.rows[0] : null
+}
+
+export function presentMessageRequest(row: MessageRequestRow) {
+  return {
+    id: row.id,
+    senderId: row.sender_id,
+    recipientId: row.recipient_id,
+    body: row.body,
+    createdAt: row.created_at,
+  }
+}
+
+export async function declineMessageRequest(requestId: string, recipientId: string): Promise<void> {
+  const del = await pool.query('DELETE FROM message_requests WHERE id = $1 AND recipient_id = $2 RETURNING 1', [requestId, recipientId])
+  if (!del.rowCount) throw httpError('Message request not found.', 404)
+}
+
+export async function findExistingThreadForExactParticipants(participantIds: string[]): Promise<ThreadSummary | null> {
+  if (!participantIds.length) return null
+  const participants = participantIds.map((p) => p.trim()).filter(Boolean)
+  // Find a thread that contains all the requested participant ids AND has exactly the same number of participants.
+  const placeholders = participants.map((_, i) => `$${i + 1}`).join(',')
+  const query = `
+    SELECT t.id
+    FROM message_threads t
+    WHERE EXISTS (SELECT 1 FROM thread_participants tp WHERE tp.thread_id = t.id AND tp.user_id = ANY(ARRAY[${placeholders}]::uuid[]))
+    GROUP BY t.id
+    HAVING COUNT(DISTINCT tp.user_id) = $${participants.length + 1}
+    LIMIT 1
+  `
+  // We can't reuse the tp alias in HAVING; do a different approach: use an intersection pattern
+  const result = await pool.query(
+    `
+      SELECT t.id
+      FROM message_threads t
+      JOIN thread_participants tp ON tp.thread_id = t.id
+      GROUP BY t.id
+      HAVING array_agg(tp.user_id) @> $1::uuid[] AND cardinality(array_agg(DISTINCT tp.user_id)) = $2
+      LIMIT 1
+    `,
+    [participants, participants.length]
+  )
+  if (!result.rowCount) return null
+  const threadId = result.rows[0].id
+  // present summary for first participant to fetch participants
+  const summary = await getThreadForUser(threadId, participants[0])
+  return summary
+}
+
+export async function acceptMessageRequest(requestId: string, recipientId: string): Promise<ThreadSummary> {
+  const request = await getMessageRequest(requestId)
+  if (!request) throw httpError('Message request not found.', 404)
+  if (request.recipient_id !== recipientId) throw httpError('Not authorized to accept this request.', 403)
+
+  // Find or create a 1:1 thread for sender and recipient
+  const participantIds = [request.sender_id, request.recipient_id]
+  const existing = await findExistingThreadForExactParticipants(participantIds)
+  if (existing) {
+    // insert message into existing thread
+    await appendMessage(existing.id, request.sender_id, request.body)
+    // remove any requests between the pair
+    await pool.query('DELETE FROM message_requests WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)', [
+      request.sender_id,
+      request.recipient_id,
+    ])
+    return existing
+  }
+
+  const thread = await createThreadWithMessage(request.sender_id, [await findUserById(request.recipient_id).then((u) => u?.handle ?? request.recipient_id)], request.body)
+  // Remove any pending requests for the pair
+  await pool.query('DELETE FROM message_requests WHERE (sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)', [
+    request.sender_id,
+    request.recipient_id,
+  ])
+  return thread
 }
 
 export async function listThreadsForUser(userId: string, limit = 25): Promise<ThreadSummary[]> {
@@ -437,5 +567,22 @@ export function presentMessage(row: ThreadMessageRow) {
     body: row.body,
     createdAt: row.created_at,
     sender: presentUser(row.sender),
+  }
+}
+
+export async function removeThreadForUser(threadId: string, userId: string): Promise<void> {
+  // Remove the user from the participants list for the given thread.
+  const del = await pool.query('DELETE FROM thread_participants WHERE thread_id = $1 AND user_id = $2 RETURNING 1', [
+    threadId,
+    userId,
+  ])
+  if (!del.rowCount) {
+    throw httpError('Conversation not found for current user.', 404)
+  }
+
+  // If there are no participants left, delete the thread (messages cascade due to FK ON DELETE CASCADE).
+  const remaining = await pool.query('SELECT COUNT(1)::int AS count FROM thread_participants WHERE thread_id = $1', [threadId])
+  if ((remaining.rows[0]?.count ?? 0) === 0) {
+    await pool.query('DELETE FROM message_threads WHERE id = $1', [threadId])
   }
 }

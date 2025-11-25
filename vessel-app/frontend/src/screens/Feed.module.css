@@ -156,6 +156,129 @@
   display: none;
 }
 
+.searchBar {
+  margin-top: 0.6rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.searchField {
+  width: 100%;
+  max-width: clamp(420px, 78vw, 540px);
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.92);
+  border-radius: 14px;
+  padding: 0.45rem 0.6rem;
+  gap: 0.5rem;
+  border: 1px solid rgba(16, 18, 22, 0.06);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.searchField input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.35rem;
+  outline: none;
+}
+
+.searchOverlay {
+  position: absolute;
+  top: calc(64px + 1rem);
+  left: 0;
+  right: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.searchResultsPanel {
+  pointer-events: all;
+  margin: 0 auto;
+  width: 100%;
+  max-width: clamp(420px, 78vw, 540px);
+  background: rgba(8, 8, 10, 0.82); /* darker for contrast */
+  color: #ffffff; /* overall text color: bright */
+  border-radius: 14px;
+  padding: 0.9rem;
+  box-shadow: 0 26px 48px -20px rgba(0,0,0,0.85);
+  border: 1px solid rgba(255,255,255,0.12); /* thin white outline */
+}
+
+.searchSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+
+.searchSection h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #fff; /* section headings full white for clarity */
+}
+
+.searchAccountRow {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.6rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  color: #fff; /* ensure text is white */
+  border: 1px solid rgba(255,255,255,0.08); /* subtle white outline */
+}
+
+.searchAccountAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.14);
+  color: #000; /* avatar letter should be readable on light avatar bg */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.searchAccountInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  color: #fff; /* detail text white */
+}
+
+.searchVideoRow {
+  padding: 0.5rem;
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  color: #fff; /* ensure text is white */
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.searchVideoThumb {
+  width: 84px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.searchNoResults {
+  padding: 0.9rem;
+  text-align: center;
+  color: #fff; /* make the 'no results' text fully white */
+}
+
 .tabButton,
 .tabButtonActive {
   border: none;

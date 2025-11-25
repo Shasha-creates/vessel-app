@@ -51,6 +51,14 @@ export default function Inbox() {
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
   const [mutualFriends, setMutualFriends] = React.useState<ApiUser[]>([])
+  const [incomingRequests, setIncomingRequests] = React.useState<{
+    id: string
+    sender: ApiUser | null
+    body: string
+    createdAt: string
+  }[]>([])
+  const [incomingRequestsLoading, setIncomingRequestsLoading] = React.useState(false)
+  const [incomingRequestsError, setIncomingRequestsError] = React.useState<string | null>(null)
   const isAuthenticated = contentService.isAuthenticated()
   const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -170,6 +178,30 @@ export default function Inbox() {
       cancelled = true
     }
   }, [isAuthenticated, activeProfile.id])
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function loadRequests() {
+      if (!isAuthenticated || tab !== 'messages') {
+        setIncomingRequests([])
+        return
+      }
+      setIncomingRequestsLoading(true)
+      setIncomingRequestsError(null)
+      try {
+        const requests = await contentService.fetchIncomingMessageRequests()
+        if (!cancelled) setIncomingRequests(requests)
+      } catch (err) {
+        if (!cancelled) setIncomingRequestsError(err instanceof Error ? err.message : 'Unable to load requests')
+      } finally {
+        if (!cancelled) setIncomingRequestsLoading(false)
+      }
+    }
+    void loadRequests()
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, tab, threadsRefreshKey])
 
   React.useEffect(() => {
     if (!activeConversationId && threads.length) {
@@ -328,6 +360,12 @@ export default function Inbox() {
       )
       setDrafts((current) => ({ ...current, [conversationId]: '' }))
     } catch (error) {
+      // If server returned 202 with requests, show a user-friendly note that requests were created
+      if ((error as any)?.status === 202) {
+        setComposeError((error as any).message || 'Message requests were created for some recipients.')
+        setComposeVisible(false)
+        return
+      }
       const message = error instanceof Error ? error.message : 'Unable to send that message right now.'
       window.alert(message)
     } finally {
@@ -573,6 +611,54 @@ export default function Inbox() {
       tabContent = (
         <>
           {composeSection}
+          {incomingRequestsLoading ? (
+            <div className={styles.status}>Checking your incoming message requests...</div>
+          ) : incomingRequestsError ? (
+            <div className={styles.status}>{incomingRequestsError}</div>
+          ) : incomingRequests.length ? (
+            <div className={styles.requestsPanel}>
+              <strong style={{ display: 'block', marginBottom: 8 }}>Message requests</strong>
+              {incomingRequests.map((r) => (
+                <div key={r.id} className={styles.requestRow}>
+                  <div className={styles.requestBody}>
+                    <div style={{ fontWeight: 700 }}>{r.sender ? formatHandle(r.sender.handle || r.sender.id) : '@unknown'}</div>
+                    <div style={{ color: 'rgba(255,255,255,0.8)' }}>{r.body}</div>
+                  </div>
+                  <div className={styles.requestActions}>
+                    <button
+                      type="button"
+                      className={styles.followButton}
+                      onClick={async () => {
+                        try {
+                          const thread = await contentService.acceptMessageRequest(r.id)
+                          setThreads((current) => [thread, ...current].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()))
+                          setIncomingRequests((current) => current.filter((item) => item.id !== r.id))
+                        } catch (err) {
+                          window.alert(err instanceof Error ? err.message : 'Unable to accept request')
+                        }
+                      }}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dismissButton}
+                      onClick={async () => {
+                        try {
+                          await contentService.declineMessageRequest(r.id)
+                          setIncomingRequests((current) => current.filter((item) => item.id !== r.id))
+                        } catch (err) {
+                          window.alert(err instanceof Error ? err.message : 'Unable to decline request')
+                        }
+                      }}
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className={styles.status}>Loading conversations...</div>
         </>
       )
@@ -660,6 +746,37 @@ export default function Inbox() {
                           >
                             {formatHandle(targetHandle)}
                           </button>
+                          <div className={styles.conversationOptions}>
+                            <button
+                              type="button"
+                              aria-label="Conversation options"
+                              className={styles.conversationOptionButton}
+                              onClick={async (e) => {
+                                e.stopPropagation()
+                                // confirm deletion
+                                if (!window.confirm('Delete this conversation? This will remove it for you.')) return
+                                try {
+                                  await contentService.deleteThread(thread.id)
+                                  // remove from local list and close panel if necessary
+                                  setThreads((current) => current.filter((t) => t.id !== thread.id))
+                                  if (activeConversationId === thread.id) {
+                                    setActiveConversationId((current) => {
+                                      const remaining = threads.filter((t) => t.id !== thread.id)
+                                      return remaining.length ? remaining[0].id : null
+                                    })
+                                  }
+                                  if (expandedThreadId === thread.id) {
+                                    setExpandedThreadId(null)
+                                  }
+                                } catch (err) {
+                                  const msg = err instanceof Error ? err.message : 'Unable to delete conversation.'
+                                  window.alert(msg)
+                                }
+                              }}
+                            >
+                              ⋯
+                            </button>
+                          </div>
                         </div>
                       ) : null}
                       {messageError ? <div className={styles.contactError}>{messageError}</div> : null}

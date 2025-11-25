@@ -167,3 +167,10 @@ export const SvgExitCircle = (props: ImgIconProps) => <ImgIcon src="/media/icons
 export const SvgPerson = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-person.svg" alt="Profile" {...props} />
 export const SvgInbox = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-inbox.svg" alt="Inbox" {...props} />
 export const SvgDiscover = (props: ImgIconProps) => <ImgIcon src="/media/icons/icons8-discover.svg" alt="Discover" {...props} />
+
+export const MessageSendIcon = (props: BaseIconProps) => (
+  <svg width={props.width || 35} height={props.height || 35} viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
+    <rect width="35" height="35" rx="17.5" fill="#373F27" />
+    <path d="M17.5 1.40002C8.62192 1.40002 1.40002 8.62262 1.40002 17.5C1.40002 26.3774 8.62192 33.6 17.5 33.6C26.3781 33.6 33.6 26.3774 33.6 17.5C33.6 8.62262 26.3781 1.40002 17.5 1.40002ZM24.9949 15.8949C24.8584 16.0314 24.6792 16.1 24.5 16.1C24.3208 16.1 24.1416 16.0314 24.0051 15.8949L18.2 10.0898V26.6C18.2 26.9864 17.8871 27.3 17.5 27.3C17.1129 27.3 16.8 26.9864 16.8 26.6V10.0898L10.9949 15.8949C10.7212 16.1686 10.2788 16.1686 10.0051 15.8949C9.73142 15.6212 9.73142 15.1788 10.0051 14.9051L17.0044 7.90582C17.0688 7.84072 17.1465 7.78962 17.2326 7.75392C17.4034 7.68322 17.5966 7.68322 17.7674 7.75392C17.8535 7.78962 17.9305 7.84072 17.9956 7.90582L24.9949 14.9051C25.2686 15.1788 25.2686 15.6212 24.9949 15.8949Z" fill="#FAD291" />
+  </svg>
+)

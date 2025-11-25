@@ -7,6 +7,17 @@ import { Media } from '../media'
 import styles from './Home.module.css'
 
 type TabId = 'forYou' | 'following' | 'friends' | 'prayer'
+type SearchResults = {
+  accounts: Array<{
+    id: string
+    handle?: string | null
+    name?: string | null
+    church?: string | null
+    photoUrl?: string | null
+  }>
+  videos: Video[]
+  categories: string[]
+}
 
 const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'following', label: 'Following' },
@@ -23,19 +34,20 @@ export default function Home() {
   const [comments, setComments] = React.useState<VideoComment[]>([])
   const [commentsLoading, setCommentsLoading] = React.useState(false)
   const [commentsError, setCommentsError] = React.useState<string | null>(null)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = (searchParams.get('q') || '').trim()
   const [searchValue, setSearchValue] = React.useState(initialQuery)
+  const [showResults, setShowResults] = React.useState(Boolean(initialQuery))
+  const [searchResults, setSearchResults] = React.useState<SearchResults>({ accounts: [], videos: [], categories: [] })
+  const [searchLoading, setSearchLoading] = React.useState(false)
+  const [searchError, setSearchError] = React.useState<string | null>(null)
   const [isCommentsOpen, setIsCommentsOpen] = React.useState(false)
-  const [loading, setLoading] = React.useState(true)
-  const [error, setError] = React.useState<string | null>(null)
+  const [isSearchOpen, setIsSearchOpen] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<TabId>('forYou')
 
   React.useEffect(() => {
     let cancelled = false
     async function loadFeed() {
-      setLoading(true)
-      setError(null)
 
       try {
         let feed: Video[] = []
@@ -62,13 +74,11 @@ export default function Home() {
         }
       } catch (err) {
         if (!cancelled) {
-          const message = err instanceof Error ? err.message : 'Unable to load this feed.'
-          setError(message)
+          console.error(err)
           setFeatured([])
         }
       } finally {
         if (!cancelled) {
-          setLoading(false)
         }
       }
     }
@@ -111,25 +121,48 @@ export default function Home() {
     }
   }, [heroVideo, isCommentsOpen])
 
-  const searchResults = React.useMemo(() => {
-    const normalized = searchValue.trim().toLowerCase()
-    if (!normalized) {
-      return []
+  React.useEffect(() => {
+    if (!initialQuery) return
+    setIsSearchOpen(true)
+    setShowResults(true)
+  }, [initialQuery])
+
+  React.useEffect(() => {
+    const trimmed = searchValue.trim()
+    if (!trimmed) {
+      setSearchResults({ accounts: [], videos: [], categories: [] })
+      setSearchError(null)
+      setSearchLoading(false)
+      return
     }
-    return featured.filter((clip) => {
-      const haystack = [
-        clip.title,
-        clip.description,
-        clip.user.name,
-        clip.user.id,
-        clip.category,
-        clip.tags?.join(' ') ?? '',
-      ]
-        .join(' ')
-        .toLowerCase()
-      return haystack.includes(normalized)
-    })
-  }, [featured, searchValue])
+    let cancelled = false
+    setSearchLoading(true)
+    setSearchError(null)
+    contentService
+      .search(trimmed, 20)
+      .then((result: Partial<SearchResults> | null) => {
+        if (cancelled) return
+        setSearchResults({
+          accounts: result?.accounts ?? [],
+          videos: result?.videos ?? [],
+          categories: result?.categories ?? [],
+        })
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : 'Unable to search right now.'
+        setSearchError(message)
+        setSearchResults({ accounts: [], videos: [], categories: [] })
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setSearchLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [searchValue])
 
   const likesDisplay = heroVideo?.likesDisplay ?? formatLikes(heroVideo?.likes ?? 0)
   const commentsDisplay = formatLikes(heroVideo?.comments ?? comments.length)
@@ -162,43 +195,109 @@ export default function Home() {
           <button
             type="button"
             className={styles.searchButton}
-            onClick={() => searchInputRef.current?.focus()}
+            onClick={() => {
+              setShowResults(true)
+              setIsSearchOpen(true)
+              setTimeout(() => searchInputRef.current?.focus(), 10)
+            }}
           >
-            🔍
+            Search
           </button>
         </div>
 
-        <div className={styles.searchBar}>
-          <span aria-hidden="true">🔍</span>
-          <input
-            ref={searchInputRef}
-            type="text"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            placeholder="Search creators, testimonies, verses…"
-          />
-          {searchValue ? (
-            <button type="button" aria-label="Clear search" onClick={() => setSearchValue('')}>
-              ✕
-            </button>
-          ) : null}
-        </div>
-        {searchValue ? (
-          <div className={styles.inlineResults}>
-            {loading ? (
-              <p>Gathering the latest moments…</p>
-            ) : error ? (
-              <p className={styles.searchError}>{error}</p>
-            ) : searchResults.length ? (
-              searchResults.slice(0, 5).map((clip) => (
-                <Link key={clip.id} to={`/watch/${clip.id}`} className={styles.resultItem}>
-                  <strong>{clip.title}</strong>
-                  <span>{clip.user.name}</span>
-                </Link>
-              ))
-            ) : (
-              <p>No matching clips yet. Try another keyword.</p>
-            )}
+        {isSearchOpen ? (
+          <div className={styles.searchOverlay} role="dialog" aria-modal="true">
+            <div className={styles.searchModal}>
+              <form
+                className={styles.searchBar}
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  setShowResults(true)
+                  const trimmed = searchValue.trim()
+                  const nextParams = new URLSearchParams(searchParams)
+                  if (trimmed) {
+                    nextParams.set('q', trimmed)
+                  } else {
+                    nextParams.delete('q')
+                  }
+                  setSearchParams(nextParams)
+                }}
+              >
+                <span aria-hidden="true">🔍</span>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchValue}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                  placeholder="Search creators, churches, videos..."
+                  onFocus={() => setShowResults(true)}
+                />
+                {searchValue ? (
+                  <button type="button" aria-label="Clear search" onClick={() => setSearchValue('')}>
+                    ✕
+                  </button>
+                ) : null}
+                <button type="submit" className={styles.searchSubmit}>
+                  Search
+                </button>
+                <button
+                  type="button"
+                  className={styles.searchClose}
+                  aria-label="Close search"
+                  onClick={() => setIsSearchOpen(false)}
+                >
+                  Close
+                </button>
+              </form>
+              {searchValue && showResults ? (
+                <div className={styles.inlineResults}>
+                  {searchLoading ? (
+                    <p>Gathering the latest moments...</p>
+                  ) : searchError ? (
+                    <p className={styles.searchError}>{searchError}</p>
+                  ) : (
+                    <>
+                      <div className={styles.resultGroup}>
+                        <div className={styles.resultHeader}>
+                          <span>Accounts</span>
+                          <small>{searchResults.accounts.length} found</small>
+                        </div>
+                        {searchResults.accounts.length ? (
+                          searchResults.accounts.slice(0, 5).map((user) => (
+                            <Link key={user.id} to={`/profile/${user.handle || user.id}`} className={styles.resultItem}>
+                              <div className={styles.resultMeta}>
+                                <strong>@{user.handle || user.id}</strong>
+                                <span>{user.name || user.handle || user.id}</span>
+                              </div>
+                            </Link>
+                          ))
+                        ) : (
+                          <p className={styles.resultEmpty}>No matching accounts yet.</p>
+                        )}
+                      </div>
+                      <div className={styles.resultGroup}>
+                        <div className={styles.resultHeader}>
+                          <span>Videos</span>
+                          <small>{searchResults.videos.length} found</small>
+                        </div>
+                        {searchResults.videos.length ? (
+                          searchResults.videos.slice(0, 5).map((clip) => (
+                            <Link key={clip.id} to={`/watch/${clip.id}`} className={styles.resultItem}>
+                              <div className={styles.resultMeta}>
+                                <strong>{clip.title}</strong>
+                                <span>{clip.user.name}</span>
+                              </div>
+                            </Link>
+                          ))
+                        ) : (
+                          <p className={styles.resultEmpty}>No matching clips yet.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

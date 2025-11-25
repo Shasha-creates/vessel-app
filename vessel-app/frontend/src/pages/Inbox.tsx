@@ -8,6 +8,7 @@ import {
   type ThreadMessage,
   type SuggestedConnection,
   type NotificationSummary,
+  type MessageRequest,
 } from '../services/contentService'
 import { formatRelativeTime, formatDateTime } from '../utils/time'
 
@@ -49,6 +50,12 @@ export default function Inbox() {
   const [composeDraft, setComposeDraft] = React.useState('')
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
+  const [composeNotice, setComposeNotice] = React.useState<string | null>(null)
+  const [requests, setRequests] = React.useState<MessageRequest[]>([])
+  const [requestsLoading, setRequestsLoading] = React.useState(false)
+  const [requestsError, setRequestsError] = React.useState<string | null>(null)
+  const [requestActionId, setRequestActionId] = React.useState<string | null>(null)
+  const [deleteBusyId, setDeleteBusyId] = React.useState<string | null>(null)
   const isAuthenticated = contentService.isAuthenticated()
   const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -90,8 +97,10 @@ export default function Inbox() {
     (handle?: string) => {
       setTab('messages')
       setComposeVisible(true)
+      setComposeNotice(null)
+      setComposeError(null)
       if (handle) {
-        setComposeHandle(handle.startsWith('@') ? handle : `@${handle}`)
+        setComposeHandle(handle)
       }
     },
     []
@@ -208,6 +217,42 @@ export default function Inbox() {
   }, [threadsRefreshKey, activeProfile.id])
 
   React.useEffect(() => {
+    if (!isAuthenticated || tab !== 'messages') {
+      setRequests([])
+      setRequestsLoading(false)
+      setRequestsError(null)
+      return
+    }
+    let cancelled = false
+    setRequestsLoading(true)
+    setRequestsError(null)
+    contentService
+      .fetchIncomingMessageRequests()
+      .then((items) => {
+        if (!cancelled) {
+          setRequests((current) => {
+            const outbound = current.filter((req) => req.isInbound === false)
+            return [...items, ...outbound]
+          })
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          const message = error instanceof Error ? error.message : 'Unable to load message requests.'
+          setRequestsError(message)
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRequestsLoading(false)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthenticated, tab, threadsRefreshKey])
+
+  React.useEffect(() => {
     if (tab === 'messages' && !activeConversationId && threads.length > 0) {
       const firstId = threads[0].id
       setActiveConversationId(firstId)
@@ -286,6 +331,33 @@ export default function Inbox() {
     }
   }
 
+  async function deleteThread(threadId: string) {
+    if (!threadId) return
+    const confirmDelete = window.confirm('Delete this conversation?')
+    if (!confirmDelete) return
+    setDeleteBusyId(threadId)
+    try {
+      await contentService.deleteThread(threadId)
+      setThreads((current) => {
+        const next = current.filter((thread) => thread.id !== threadId)
+        const fallbackId = next[0]?.id ?? null
+        if (activeConversationId === threadId) {
+          setActiveConversationId(fallbackId)
+          setExpandedThreadId(fallbackId)
+          if (!fallbackId) {
+            setMessages([])
+          }
+        }
+        return next
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to delete this conversation.'
+      window.alert(message)
+    } finally {
+      setDeleteBusyId((current) => (current === threadId ? null : current))
+    }
+  }
+
   async function followSuggestionCard(id: string) {
     const target = suggestions.find((item) => item.id === id)
     if (!target || target.isFollowing) {
@@ -317,15 +389,32 @@ export default function Inbox() {
     }
     setComposeBusy(true)
     setComposeError(null)
+    setComposeNotice(null)
     try {
-      const thread = await contentService.startConversation(target, body)
-      setThreads((current) => {
-        const filtered = current.filter((item) => item.id !== thread.id)
-        return [thread, ...filtered].sort(
-          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        )
-      })
-      setActiveConversationId(thread.id)
+      const result = await contentService.startConversation(target, body)
+      if (result.thread) {
+        const { thread } = result
+        setThreads((current) => {
+          const filtered = current.filter((item) => item.id !== thread.id)
+          return [thread, ...filtered].sort(
+            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )
+        })
+        setActiveConversationId(thread.id)
+        setExpandedThreadId(thread.id)
+        setComposeNotice(null)
+      }
+      if (result.requests?.length) {
+        setRequests((current) => [
+          ...result.requests.map((req) => ({
+            ...req,
+            sender: req.sender ?? { handle: target },
+            isInbound: false,
+          })),
+          ...current,
+        ])
+        setComposeNotice('Sent as a message request. You will be notified when it is accepted.')
+      }
       setComposeDraft('')
       setComposeHandle('')
       setComposeVisible(false)
@@ -335,6 +424,42 @@ export default function Inbox() {
       setComposeError(message)
     } finally {
       setComposeBusy(false)
+    }
+  }
+
+  async function acceptRequest(id: string) {
+    setRequestActionId(id)
+    setRequestsError(null)
+    try {
+      const thread = await contentService.acceptMessageRequest(id)
+      setRequests((current) => current.filter((item) => item.id !== id))
+      setThreads((current) => {
+        const filtered = current.filter((item) => item.id !== thread.id)
+        return [thread, ...filtered].sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )
+      })
+      setActiveConversationId(thread.id)
+      setExpandedThreadId(thread.id)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to accept this request.'
+      setRequestsError(message)
+    } finally {
+      setRequestActionId((current) => (current === id ? null : current))
+    }
+  }
+
+  async function declineRequest(id: string) {
+    setRequestActionId(id)
+    setRequestsError(null)
+    try {
+      await contentService.declineMessageRequest(id)
+      setRequests((current) => current.filter((item) => item.id !== id))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to decline this request.'
+      setRequestsError(message)
+    } finally {
+      setRequestActionId((current) => (current === id ? null : current))
     }
   }
 
@@ -442,22 +567,22 @@ export default function Inbox() {
                 <input
                   value={composeHandle}
                   onChange={(event) => setComposeHandle(event.target.value)}
-                  placeholder="@friend"
+                  placeholder="Name or handle"
                   disabled={composeBusy}
                 />
               </label>
               <button
                 type="button"
-                className={styles.dismissButton}
+                className={styles.secondaryButton}
                 onClick={() => {
                   setComposeVisible(false)
                   setComposeDraft('')
                   setComposeHandle('')
                   setComposeError(null)
+                  setComposeNotice(null)
                 }}
-                aria-label="Close composer"
               >
-                ×
+                Cancel
               </button>
             </div>
             <textarea
@@ -468,9 +593,15 @@ export default function Inbox() {
               disabled={composeBusy}
             />
             {composeError ? <p className={styles.composeError}>{composeError}</p> : null}
-            <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandle.trim()}>
-              {composeBusy ? 'Sending...' : 'Send'}
-            </button>
+            {composeNotice ? <p className={styles.composeNotice}>{composeNotice}</p> : null}
+            <div className={styles.composeActions}>
+              <button type="button" className={styles.secondaryButton} onClick={() => setComposeVisible(false)} disabled={composeBusy}>
+                Close
+              </button>
+              <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandle.trim()}>
+                {composeBusy ? 'Sending...' : 'Send'}
+              </button>
+            </div>
           </form>
         ) : (
           <button type="button" className={styles.composeButton} onClick={() => openComposer()}>
@@ -479,11 +610,58 @@ export default function Inbox() {
         )}
       </div>
     )
+    const requestSection =
+      !isAuthenticated || (!requestsLoading && !requestsError && !requests.length)
+        ? null
+        : (
+            <div className={styles.requestsPanel}>
+              <div className={styles.requestRowHeader}>
+                <strong>Message requests</strong>
+                {requestsLoading ? <span className={styles.requestMeta}>Checking...</span> : null}
+              </div>
+              {requestsError ? <p className={styles.composeError}>{requestsError}</p> : null}
+              {!requestsLoading && !requestsError && !requests.length ? (
+                <div className={styles.requestBody}>No pending requests.</div>
+              ) : null}
+              {requests.map((req) => {
+                const senderLabel = formatHandle(req.sender?.handle || req.sender?.name || 'guest')
+                const isBusy = requestActionId === req.id
+                const isInbound = req.isInbound !== false
+                return (
+                  <div key={req.id} className={styles.requestRow}>
+                    <div className={styles.requestBody}>
+                      <span className={styles.requestSender}>{senderLabel}</span>
+                      <span className={styles.requestText}>{req.body}</span>
+                      <small className={styles.requestMeta}>{formatRelativeTime(req.createdAt)}</small>
+                    </div>
+                    {isInbound ? (
+                      <div className={styles.requestActions}>
+                        <button type="button" className={styles.secondaryButton} onClick={() => declineRequest(req.id)} disabled={isBusy}>
+                          Decline
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.requestAccept}
+                          onClick={() => acceptRequest(req.id)}
+                          disabled={isBusy}
+                        >
+                          {isBusy ? 'Working...' : 'Accept'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className={styles.requestMeta}>Pending recipient approval</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
 
     if (threadsLoading) {
       tabContent = (
         <>
           {composeSection}
+          {requestSection}
           <div className={styles.status}>Loading conversations...</div>
         </>
       )
@@ -503,6 +681,7 @@ export default function Inbox() {
       tabContent = (
         <>
           {composeSection}
+          {requestSection}
           <div className={styles.status}>
             No messages yet. Visit Suggested to follow people you know and start the first conversation.
           </div>
@@ -512,6 +691,7 @@ export default function Inbox() {
       tabContent = (
         <>
           {composeSection}
+          {requestSection}
           {threads.map((thread) => {
             const isActive = thread.id === activeConversationId
             const draftValue = drafts[thread.id] ?? ''
@@ -531,29 +711,44 @@ export default function Inbox() {
                 }}
                 className={`${styles.threadCard} ${isExpanded ? styles.threadCardExpanded : ''}`}
               >
-                <button
-                  type="button"
-                  className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
-                  onClick={() => handleSelectThread(thread.id)}
-                  aria-expanded={isExpanded}
-                >
-                  <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
-                    {badgeLetter}
-                  </div>
-                  <div className={styles.threadCopy}>
-                    <div className={styles.threadTitleRow}>
-                      <span
-                        className={`${styles.threadActor} ${targetHandle ? styles.threadActorLink : ''}`}
-                        title={targetHandle ? `View ${formatHandle(targetHandle)}'s profile` : undefined}
-                        onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
-                      >
-                        {title}
-                      </span>
-                      <span className={styles.threadTime}>{timeAgo}</span>
+                <div className={styles.threadHeader}>
+                  <button
+                    type="button"
+                    className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
+                    onClick={() => handleSelectThread(thread.id)}
+                    aria-expanded={isExpanded}
+                  >
+                    <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
+                      {badgeLetter}
                     </div>
-                    <p className={styles.threadPreview}>{preview}</p>
-                  </div>
-                </button>
+                    <div className={styles.threadCopy}>
+                      <div className={styles.threadTitleRow}>
+                        <span
+                          className={`${styles.threadActor} ${targetHandle ? styles.threadActorLink : ''}`}
+                          title={targetHandle ? `View ${formatHandle(targetHandle)}'s profile` : undefined}
+                          onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
+                        >
+                          {title}
+                        </span>
+                        <span className={styles.threadTime}>{timeAgo}</span>
+                      </div>
+                      <p className={styles.threadPreview}>{preview}</p>
+                    </div>
+                    {thread.unreadCount > 0 ? <span className={styles.unreadBadge}>{thread.unreadCount}</span> : null}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.threadDelete}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      void deleteThread(thread.id)
+                    }}
+                    disabled={deleteBusyId === thread.id}
+                    aria-label="Delete conversation"
+                  >
+                    {deleteBusyId === thread.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
 
                 <div
                   className={`${styles.conversation} ${isExpanded ? styles.conversationOpen : styles.conversationClosed}`}
