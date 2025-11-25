@@ -8,7 +8,7 @@ import {
   type ThreadMessage,
   type SuggestedConnection,
   type NotificationSummary,
-  type MessageRequest,
+  type ContactMatch,
 } from '../services/contentService'
 import { formatRelativeTime, formatDateTime } from '../utils/time'
 
@@ -51,11 +51,14 @@ export default function Inbox() {
   const [composeBusy, setComposeBusy] = React.useState(false)
   const [composeError, setComposeError] = React.useState<string | null>(null)
   const [composeNotice, setComposeNotice] = React.useState<string | null>(null)
-  const [requests, setRequests] = React.useState<MessageRequest[]>([])
-  const [requestsLoading, setRequestsLoading] = React.useState(false)
-  const [requestsError, setRequestsError] = React.useState<string | null>(null)
-  const [requestActionId, setRequestActionId] = React.useState<string | null>(null)
-  const [deleteBusyId, setDeleteBusyId] = React.useState<string | null>(null)
+  const [mutualContacts, setMutualContacts] = React.useState<ContactMatch[]>([])
+  const [mutualLoading, setMutualLoading] = React.useState(false)
+  const [mutualError, setMutualError] = React.useState<string | null>(null)
+  const [handleSuggestions, setHandleSuggestions] = React.useState<ContactMatch[]>([])
+  const [requests, setRequests] = React.useState<
+    { id: string; handle: string; body: string; createdAt: string; direction: 'inbound' | 'outbound'; status: 'pending' | 'accepted' | 'declined' }
+  >([])
+  const [blockedHandles, setBlockedHandles] = React.useState<Set<string>>(new Set())
   const isAuthenticated = contentService.isAuthenticated()
   const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
 
@@ -100,7 +103,7 @@ export default function Inbox() {
       setComposeNotice(null)
       setComposeError(null)
       if (handle) {
-        setComposeHandle(handle)
+        setComposeHandle(handle.replace(/^@/, ''))
       }
     },
     []
@@ -218,39 +221,43 @@ export default function Inbox() {
 
   React.useEffect(() => {
     if (!isAuthenticated || tab !== 'messages') {
-      setRequests([])
-      setRequestsLoading(false)
-      setRequestsError(null)
+      setMutualContacts([])
+      setMutualError(null)
       return
     }
     let cancelled = false
-    setRequestsLoading(true)
-    setRequestsError(null)
-    contentService
-      .fetchIncomingMessageRequests()
-      .then((items) => {
-        if (!cancelled) {
-          setRequests((current) => {
-            const outbound = current.filter((req) => req.isInbound === false)
-            return [...items, ...outbound]
-          })
-        }
+    setMutualLoading(true)
+    setMutualError(null)
+    Promise.all([contentService.fetchFollowingProfiles(), contentService.fetchFollowerProfiles()])
+      .then(([following, followers]) => {
+        if (cancelled) return
+        const followerMap = new Map(followers.map((u) => [normalizeHandle(u.handle || u.id), u]))
+        const mutual = following
+          .filter((user) => followerMap.has(normalizeHandle(user.handle || user.id)))
+          .map((user) => ({
+            id: user.id,
+            handle: user.handle || user.id,
+            name: user.name || user.handle || user.id,
+            email: user.email,
+            church: user.church,
+            country: user.country,
+            photoUrl: user.photoUrl,
+          }))
+        setMutualContacts(mutual)
       })
       .catch((error) => {
-        if (!cancelled) {
-          const message = error instanceof Error ? error.message : 'Unable to load message requests.'
-          setRequestsError(message)
-        }
+        if (cancelled) return
+        const message = error instanceof Error ? error.message : 'Unable to load mutual connections.'
+        setMutualError(message)
       })
       .finally(() => {
-        if (!cancelled) {
-          setRequestsLoading(false)
-        }
+        if (cancelled) return
+        setMutualLoading(false)
       })
     return () => {
       cancelled = true
     }
-  }, [isAuthenticated, tab, threadsRefreshKey])
+  }, [isAuthenticated, tab])
 
   React.useEffect(() => {
     if (tab === 'messages' && !activeConversationId && threads.length > 0) {
@@ -304,6 +311,22 @@ export default function Inbox() {
     setDrafts((current) => ({ ...current, [threadId]: value }))
   }
 
+  function updateHandleSuggestions(query: string) {
+    const trimmed = normalizeHandle(query)
+    if (!trimmed || !mutualContacts.length) {
+      setHandleSuggestions([])
+      return
+    }
+    const matches = mutualContacts
+      .filter((contact) => {
+        const handle = normalizeHandle(contact.handle || contact.id)
+        const name = normalizeHandle(contact.name || '')
+        return handle.includes(trimmed) || name.includes(trimmed)
+      })
+      .slice(0, 5)
+    setHandleSuggestions(matches)
+  }
+
   async function sendMessage(conversationId: string, overrideText?: string) {
     const text = (overrideText ?? drafts[conversationId] ?? '').trim()
     if (!text) return
@@ -328,33 +351,6 @@ export default function Inbox() {
       window.alert(message)
     } finally {
       setSendingThreadId((current) => (current === conversationId ? null : current))
-    }
-  }
-
-  async function deleteThread(threadId: string) {
-    if (!threadId) return
-    const confirmDelete = window.confirm('Delete this conversation?')
-    if (!confirmDelete) return
-    setDeleteBusyId(threadId)
-    try {
-      await contentService.deleteThread(threadId)
-      setThreads((current) => {
-        const next = current.filter((thread) => thread.id !== threadId)
-        const fallbackId = next[0]?.id ?? null
-        if (activeConversationId === threadId) {
-          setActiveConversationId(fallbackId)
-          setExpandedThreadId(fallbackId)
-          if (!fallbackId) {
-            setMessages([])
-          }
-        }
-        return next
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to delete this conversation.'
-      window.alert(message)
-    } finally {
-      setDeleteBusyId((current) => (current === threadId ? null : current))
     }
   }
 
@@ -387,52 +383,53 @@ export default function Inbox() {
       setComposeError('Enter a handle and your message before sending.')
       return
     }
-    setComposeBusy(true)
     setComposeError(null)
-    setComposeNotice(null)
-    try {
-      const result = await contentService.startConversation(target, body)
-      if (result.thread) {
-        const { thread } = result
-        setThreads((current) => {
-          const filtered = current.filter((item) => item.id !== thread.id)
-          return [thread, ...filtered].sort(
-            (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          )
-        })
-        setActiveConversationId(thread.id)
-        setExpandedThreadId(thread.id)
-        setComposeNotice(null)
-      }
-      if (result.requests?.length) {
-        setRequests((current) => [
-          ...result.requests.map((req) => ({
-            ...req,
-            sender: req.sender ?? { handle: target },
-            isInbound: false,
-          })),
-          ...current,
-        ])
-        setComposeNotice('Sent as a message request. You will be notified when it is accepted.')
-      }
+    if (blockedHandles.has(target)) {
+      setComposeError('This user has declined your requests.')
+      return
+    }
+    const pendingRequest = requests.find(
+      (request) => normalizeHandle(request.handle) === target && request.status === 'pending'
+    )
+    if (pendingRequest) {
+      setComposeNotice('You already have a pending request with this user.')
+      return
+    }
+
+    const existingThread = threads.find((thread) => {
+      const participant = resolveThreadTargetHandle(thread, selfHandle)
+      return participant && normalizeHandle(participant) === target
+    })
+    if (existingThread) {
+      setActiveConversationId(existingThread.id)
+      setExpandedThreadId(existingThread.id)
+      setComposeVisible(false)
       setComposeDraft('')
       setComposeHandle('')
-      setComposeVisible(false)
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'We could not start that conversation. Please try again.'
-      setComposeError(message)
-    } finally {
-      setComposeBusy(false)
+      setComposeError(null)
+      setComposeNotice(null)
+      setHandleSuggestions([])
+      return
     }
-  }
 
-  async function acceptRequest(id: string) {
-    setRequestActionId(id)
-    setRequestsError(null)
+    const isMutual = mutualContacts.some((contact) => normalizeHandle(contact.handle || contact.id) === target)
+    if (!isMutual) {
+      const id = `req-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`
+      setRequests((current) => [
+        { id, handle: target, body, createdAt: new Date().toISOString(), direction: 'outbound', status: 'pending' },
+        ...current,
+      ])
+      setComposeNotice('Sent as a message request. Messaging will open once accepted.')
+      setComposeDraft('')
+      setComposeHandle('')
+      setHandleSuggestions([])
+      setComposeBusy(false)
+      return
+    }
+    setComposeBusy(true)
+    setComposeError(null)
     try {
-      const thread = await contentService.acceptMessageRequest(id)
-      setRequests((current) => current.filter((item) => item.id !== id))
+      const thread = await contentService.startConversation(target, body)
       setThreads((current) => {
         const filtered = current.filter((item) => item.id !== thread.id)
         return [thread, ...filtered].sort(
@@ -440,26 +437,17 @@ export default function Inbox() {
         )
       })
       setActiveConversationId(thread.id)
-      setExpandedThreadId(thread.id)
+      setComposeDraft('')
+      setComposeHandle('')
+      setComposeVisible(false)
+      setComposeNotice(null)
+      setHandleSuggestions([])
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to accept this request.'
-      setRequestsError(message)
+      const message =
+        error instanceof Error ? error.message : 'We could not start that conversation. Please try again.'
+      setComposeError(message)
     } finally {
-      setRequestActionId((current) => (current === id ? null : current))
-    }
-  }
-
-  async function declineRequest(id: string) {
-    setRequestActionId(id)
-    setRequestsError(null)
-    try {
-      await contentService.declineMessageRequest(id)
-      setRequests((current) => current.filter((item) => item.id !== id))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to decline this request.'
-      setRequestsError(message)
-    } finally {
-      setRequestActionId((current) => (current === id ? null : current))
+      setComposeBusy(false)
     }
   }
 
@@ -475,6 +463,32 @@ export default function Inbox() {
     setAuthMode(null)
     setThreadsRefreshKey((value) => value + 1)
   }, [])
+
+  function acceptRequest(id: string) {
+    const request = requests.find((item) => item.id === id)
+    if (!request) return
+    setRequests((current) => current.filter((item) => item.id !== id))
+    setBlockedHandles((current) => {
+      const next = new Set(current)
+      next.delete(normalizeHandle(request.handle))
+      return next
+    })
+    setComposeHandle(request.handle)
+    setComposeDraft(request.body)
+    setComposeVisible(true)
+    setComposeNotice('Request accepted. Continue the conversation.')
+  }
+
+  function declineRequest(id: string) {
+    const request = requests.find((item) => item.id === id)
+    if (!request) return
+    setRequests((current) => current.filter((item) => item.id !== id))
+    setBlockedHandles((current) => {
+      const next = new Set(current)
+      next.add(normalizeHandle(request.handle))
+      return next
+    })
+  }
 
   let tabContent: React.ReactNode
 
@@ -564,27 +578,54 @@ export default function Inbox() {
             <div className={styles.composeRow}>
               <label>
                 To
-                <input
-                  value={composeHandle}
-                  onChange={(event) => setComposeHandle(event.target.value)}
-                  placeholder="Name or handle"
-                  disabled={composeBusy}
-                />
+                <div className={styles.handleInputWrap}>
+                  <span className={styles.handlePrefix}>@</span>
+                  <input
+                    value={composeHandle}
+                    onChange={(event) => {
+                      const next = event.target.value.replace(/^@/, '')
+                      setComposeHandle(next)
+                      updateHandleSuggestions(next)
+                    }}
+                    placeholder="friend"
+                    disabled={composeBusy}
+                  />
+                </div>
               </label>
               <button
                 type="button"
-                className={styles.secondaryButton}
+                className={styles.dismissButton}
                 onClick={() => {
                   setComposeVisible(false)
                   setComposeDraft('')
                   setComposeHandle('')
                   setComposeError(null)
                   setComposeNotice(null)
+                  setHandleSuggestions([])
                 }}
+                aria-label="Close composer"
               >
-                Cancel
+                ×
               </button>
             </div>
+            {handleSuggestions.length ? (
+              <ul className={styles.handleSuggestions}>
+                {handleSuggestions.map((contact) => (
+                  <li key={contact.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setComposeHandle(contact.handle || contact.id)
+                        updateHandleSuggestions(contact.handle || contact.id)
+                      }}
+                    >
+                      <span className={styles.handleSuggestionName}>{formatHandle(contact.handle || contact.id)}</span>
+                      <span className={styles.handleSuggestionMeta}>{contact.name}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             <textarea
               value={composeDraft}
               onChange={(event) => setComposeDraft(event.target.value)}
@@ -595,11 +636,22 @@ export default function Inbox() {
             {composeError ? <p className={styles.composeError}>{composeError}</p> : null}
             {composeNotice ? <p className={styles.composeNotice}>{composeNotice}</p> : null}
             <div className={styles.composeActions}>
-              <button type="button" className={styles.secondaryButton} onClick={() => setComposeVisible(false)} disabled={composeBusy}>
-                Close
-              </button>
               <button type="submit" disabled={composeBusy || !composeDraft.trim() || !composeHandle.trim()}>
                 {composeBusy ? 'Sending...' : 'Send'}
+              </button>
+              <button
+                type="button"
+                className={styles.secondaryButton}
+                onClick={() => {
+                  setComposeVisible(false)
+                  setComposeDraft('')
+                  setComposeHandle('')
+                  setComposeError(null)
+                  setComposeNotice(null)
+                  setHandleSuggestions([])
+                }}
+              >
+                Cancel
               </button>
             </div>
           </form>
@@ -610,58 +662,52 @@ export default function Inbox() {
         )}
       </div>
     )
-    const requestSection =
-      !isAuthenticated || (!requestsLoading && !requestsError && !requests.length)
-        ? null
-        : (
-            <div className={styles.requestsPanel}>
-              <div className={styles.requestRowHeader}>
-                <strong>Message requests</strong>
-                {requestsLoading ? <span className={styles.requestMeta}>Checking...</span> : null}
-              </div>
-              {requestsError ? <p className={styles.composeError}>{requestsError}</p> : null}
-              {!requestsLoading && !requestsError && !requests.length ? (
-                <div className={styles.requestBody}>No pending requests.</div>
-              ) : null}
-              {requests.map((req) => {
-                const senderLabel = formatHandle(req.sender?.handle || req.sender?.name || 'guest')
-                const isBusy = requestActionId === req.id
-                const isInbound = req.isInbound !== false
-                return (
-                  <div key={req.id} className={styles.requestRow}>
-                    <div className={styles.requestBody}>
-                      <span className={styles.requestSender}>{senderLabel}</span>
-                      <span className={styles.requestText}>{req.body}</span>
-                      <small className={styles.requestMeta}>{formatRelativeTime(req.createdAt)}</small>
-                    </div>
-                    {isInbound ? (
-                      <div className={styles.requestActions}>
-                        <button type="button" className={styles.secondaryButton} onClick={() => declineRequest(req.id)} disabled={isBusy}>
-                          Decline
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.requestAccept}
-                          onClick={() => acceptRequest(req.id)}
-                          disabled={isBusy}
-                        >
-                          {isBusy ? 'Working...' : 'Accept'}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className={styles.requestMeta}>Pending recipient approval</span>
-                    )}
+
+    const requestsSection =
+      isAuthenticated && requests.length ? (
+        <div className={styles.requestsPanel}>
+          <div className={styles.requestRowHeader}>
+            <span>Message requests</span>
+            {mutualLoading ? <small>Syncing mutuals...</small> : null}
+            {mutualError ? <small className={styles.composeError}>{mutualError}</small> : null}
+          </div>
+          {requests.map((request) => {
+            const normalizedHandle = formatHandle(request.handle)
+            return (
+              <div key={request.id} className={styles.requestRow}>
+                <div className={styles.requestBody}>
+                  <span className={styles.requestSender}>{normalizedHandle}</span>
+                  <span className={styles.requestText}>{request.body}</span>
+                  <span className={styles.requestMeta}>
+                    {request.direction === 'outbound' ? 'You sent a request' : 'Sent you a request'} •{' '}
+                    {formatRelativeTime(request.createdAt)}
+                  </span>
+                </div>
+                {request.direction === 'inbound' ? (
+                  <div className={styles.requestActions}>
+                    <button className={styles.requestAccept} type="button" onClick={() => acceptRequest(request.id)}>
+                      Accept
+                    </button>
+                    <button className={styles.dismissButton} type="button" onClick={() => declineRequest(request.id)}>
+                      A-
+                    </button>
                   </div>
-                )
-              })}
-            </div>
-          )
+                ) : (
+                  <div className={styles.requestActions}>
+                    <small>{request.status === 'pending' ? 'Pending' : request.status}</small>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      ) : null
 
     if (threadsLoading) {
       tabContent = (
         <>
           {composeSection}
-          {requestSection}
+          {requestsSection}
           <div className={styles.status}>Loading conversations...</div>
         </>
       )
@@ -681,7 +727,7 @@ export default function Inbox() {
       tabContent = (
         <>
           {composeSection}
-          {requestSection}
+          {requestsSection}
           <div className={styles.status}>
             No messages yet. Visit Suggested to follow people you know and start the first conversation.
           </div>
@@ -691,7 +737,7 @@ export default function Inbox() {
       tabContent = (
         <>
           {composeSection}
-          {requestSection}
+          {requestsSection}
           {threads.map((thread) => {
             const isActive = thread.id === activeConversationId
             const draftValue = drafts[thread.id] ?? ''
@@ -711,44 +757,29 @@ export default function Inbox() {
                 }}
                 className={`${styles.threadCard} ${isExpanded ? styles.threadCardExpanded : ''}`}
               >
-                <div className={styles.threadHeader}>
-                  <button
-                    type="button"
-                    className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
-                    onClick={() => handleSelectThread(thread.id)}
-                    aria-expanded={isExpanded}
-                  >
-                    <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
-                      {badgeLetter}
+                <button
+                  type="button"
+                  className={`${styles.threadSummary} ${isExpanded ? styles.threadSummaryActive : ''}`}
+                  onClick={() => handleSelectThread(thread.id)}
+                  aria-expanded={isExpanded}
+                >
+                  <div className={`${styles.threadAvatar} ${thread.unreadCount > 0 ? styles.unread : ''}`}>
+                    {badgeLetter}
+                  </div>
+                  <div className={styles.threadCopy}>
+                    <div className={styles.threadTitleRow}>
+                      <span
+                        className={`${styles.threadActor} ${targetHandle ? styles.threadActorLink : ''}`}
+                        title={targetHandle ? `View ${formatHandle(targetHandle)}'s profile` : undefined}
+                        onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
+                      >
+                        {title}
+                      </span>
+                      <span className={styles.threadTime}>{timeAgo}</span>
                     </div>
-                    <div className={styles.threadCopy}>
-                      <div className={styles.threadTitleRow}>
-                        <span
-                          className={`${styles.threadActor} ${targetHandle ? styles.threadActorLink : ''}`}
-                          title={targetHandle ? `View ${formatHandle(targetHandle)}'s profile` : undefined}
-                          onClick={(event) => handleOpenThreadProfile(event, targetHandle)}
-                        >
-                          {title}
-                        </span>
-                        <span className={styles.threadTime}>{timeAgo}</span>
-                      </div>
-                      <p className={styles.threadPreview}>{preview}</p>
-                    </div>
-                    {thread.unreadCount > 0 ? <span className={styles.unreadBadge}>{thread.unreadCount}</span> : null}
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.threadDelete}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      void deleteThread(thread.id)
-                    }}
-                    disabled={deleteBusyId === thread.id}
-                    aria-label="Delete conversation"
-                  >
-                    {deleteBusyId === thread.id ? 'Deleting...' : 'Delete'}
-                  </button>
-                </div>
+                    <p className={styles.threadPreview}>{preview}</p>
+                  </div>
+                </button>
 
                 <div
                   className={`${styles.conversation} ${isExpanded ? styles.conversationOpen : styles.conversationClosed}`}

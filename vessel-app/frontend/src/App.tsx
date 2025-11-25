@@ -96,6 +96,8 @@ export default function App() {
           <Route path="/watch/:id" element={<Watch />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/inbox" element={<Inbox />} />
+          {/* Alias for users navigating to /messages directly */}
+          <Route path="/messages" element={<Inbox />} />
           <Route path="/profile/:id/settings" element={<Settings />} />
           <Route path="/profile/:id" element={<Profile />} />
           <Route path="/signup" element={<Signup />} />
