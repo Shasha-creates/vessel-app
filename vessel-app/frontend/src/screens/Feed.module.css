@@ -186,14 +186,14 @@
 }
 
 .searchOverlay {
-  position: absolute;
-  top: calc(64px + 1rem);
-  left: 0;
-  right: 0;
+  /* render inline inside top area so results sit directly under the field */
+  position: relative;
   width: 100%;
   display: flex;
   justify-content: center;
-  pointer-events: none;
+  align-items: flex-start; /* keep contents near the top */
+  margin-top: 20px; /* ~20px gap between the search field and results */
+  pointer-events: all;
   z-index: 10;
 }
 
@@ -202,12 +202,13 @@
   margin: 0 auto;
   width: 100%;
   max-width: clamp(420px, 78vw, 540px);
-  background: rgba(8, 8, 10, 0.82); /* darker for contrast */
-  color: #ffffff; /* overall text color: bright */
+  /* match the search field background so the panel feels connected */
+  background: rgba(255, 255, 255, 0.95);
+  color: #0b0b0b; /* dark text for readability */
   border-radius: 14px;
   padding: 0.9rem;
-  box-shadow: 0 26px 48px -20px rgba(0,0,0,0.85);
-  border: 1px solid rgba(255,255,255,0.12); /* thin white outline */
+  box-shadow: 0 18px 36px rgba(12, 14, 18, 0.08);
+  border: 1px solid rgba(16, 18, 22, 0.06); /* subtle dark outline */
 }
 
 .searchSection {
@@ -220,7 +221,7 @@
 .searchSection h4 {
   margin: 0;
   font-size: 0.9rem;
-  color: #fff; /* section headings full white for clarity */
+  color: #0b0b0b; /* dark section headings */
 }
 
 .searchAccountRow {
@@ -229,9 +230,9 @@
   align-items: center;
   padding: 0.6rem;
   border-radius: 10px;
-  background: rgba(255,255,255,0.03);
-  color: #fff; /* ensure text is white */
-  border: 1px solid rgba(255,255,255,0.08); /* subtle white outline */
+  background: rgba(0,0,0,0.03); /* subtle row contrast on white panel */
+  color: #0b0b0b; /* dark text */
+  border: 1px solid rgba(16,18,22,0.04);
 }
 
 .searchAccountAvatar {
@@ -250,7 +251,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  color: #fff; /* detail text white */
+  color: #0b0b0b; /* detail text dark */
 }
 
 .searchVideoRow {
@@ -259,9 +260,9 @@
   gap: 0.6rem;
   align-items: center;
   border-radius: 10px;
-  background: rgba(255,255,255,0.02);
-  color: #fff; /* ensure text is white */
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.03);
+  color: #0b0b0b; /* dark text */
+  border: 1px solid rgba(16,18,22,0.04);
 }
 
 .searchVideoThumb {
@@ -269,14 +270,18 @@
   height: 48px;
   border-radius: 8px;
   object-fit: cover;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(16,18,22,0.04);
 }
 
 .searchNoResults {
   padding: 0.9rem;
   text-align: center;
-  color: #fff; /* make the 'no results' text fully white */
+  color: #0b0b0b; /* dark message */
+}
+
+.searchField input {
+  color: #0b0b0b; /* keep the search input text dark when field is white */
 }
 
 .tabButton,

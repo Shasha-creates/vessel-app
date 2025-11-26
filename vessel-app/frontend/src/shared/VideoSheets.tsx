@@ -73,7 +73,7 @@ export function CommentSheet({ clip, onClose }: CommentSheetProps) {
         <div className={styles.sheetHeader}>
           <h3 className={styles.sheetTitle}>{headerTitle}</h3>
           <button type="button" className={styles.sheetClose} onClick={onClose} aria-label="Close comments">
-            x
+            ✕
           </button>
         </div>
         <div className={styles.sheetBody}>
@@ -167,7 +167,7 @@ export function DonateSheet({ clip, onClose }: DonateSheetProps) {
         <div className={styles.sheetHeader}>
           <h3 className={styles.sheetTitle}>Support this creator</h3>
           <button type="button" className={styles.sheetClose} onClick={onClose} aria-label="Close donation">
-            x
+            ✕
           </button>
         </div>
         <div className={styles.sheetBody}>

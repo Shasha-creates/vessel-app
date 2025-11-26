@@ -34,6 +34,8 @@ export default function Home() {
   const [comments, setComments] = React.useState<VideoComment[]>([])
   const [commentsLoading, setCommentsLoading] = React.useState(false)
   const [commentsError, setCommentsError] = React.useState<string | null>(null)
+  const [commentBusy, setCommentBusy] = React.useState(false)
+  const [commentText, setCommentText] = React.useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const initialQuery = (searchParams.get('q') || '').trim()
   const [searchValue, setSearchValue] = React.useState(initialQuery)
@@ -364,45 +366,58 @@ export default function Home() {
 
       {isCommentsOpen ? (
         <div className={styles.commentsOverlay} role="dialog" aria-modal="true">
-          <div className={styles.commentsPanel}>
-            <div className={styles.commentsHeader}>
-              <div>
-                <p>Comments</p>
-                <strong>{commentsDisplay}</strong>
+          <div className={styles.commentsSheet}>
+              <div className={styles.commentsHeader}>
+                <span className={styles.commentCount}>{comments.length ? `${comments.length.toLocaleString()} comments` : 'Comments'}</span>
+                <button type="button" className={styles.close} onClick={() => setIsCommentsOpen(false)} aria-label="Close comments">
+                  ✕
+                </button>
               </div>
-              <button type="button" onClick={() => setIsCommentsOpen(false)} aria-label="Close comments">
-                ✕
-              </button>
-            </div>
-            <div className={styles.commentsBody}>
-              {commentsLoading ? (
-                <p>Loading conversation…</p>
-              ) : commentsError ? (
-                <p className={styles.commentsError}>{commentsError}</p>
-              ) : comments.length ? (
-                comments.map((comment) => (
-                  <div key={comment.id} className={styles.commentRow}>
-                    <div className={styles.commentAvatar}>{comment.user.name.slice(0, 1).toUpperCase()}</div>
-                    <div>
-                      <p className={styles.commentMeta}>
-                        <span>@{comment.user.id}</span>
-                        <span>{formatRelativeTime(comment.createdAt)}</span>
-                      </p>
+              <div className={styles.commentList}>
+                {commentsLoading ? <div className={styles.commentStatus}>Loading comments...</div> : null}
+                {commentsError ? <div className={`${styles.commentStatus} ${styles.commentError}`}>{commentsError}</div> : null}
+                {!commentsLoading && !commentsError && !comments.length ? (
+                  <div className={styles.empty}>Be the first to encourage this creator.</div>
+                ) : null}
+
+                {comments.map((comment) => (
+                  <div key={comment.id} className={styles.comment}>
+                    <div className={styles.commentAvatar}>{(comment.user.name || 'Friend').slice(0, 1).toUpperCase()}</div>
+                    <div className={styles.commentBody}>
+                      <div className={styles.commentTop}>
+                        <span className={styles.commentAuthor}>{comment.user.name}</span>
+                        <span className={styles.commentMeta}>{comment.user.handle ? `@${comment.user.handle}` : 'listener'} � {formatRelativeTime(comment.createdAt)}</span>
+                      </div>
                       <p>{comment.body}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <p>Be the first to encourage this creator.</p>
-              )}
+                ))}
+              </div>
+
+              <div className={styles.commentComposer}>
+                <input
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Add a comment..."
+                />
+                <button type="button" onClick={async () => {
+                  if (!heroVideo?.id || !commentText.trim() || commentBusy) return
+                  setCommentBusy(true)
+                  try {
+                    const comment = await contentService.recordComment(heroVideo.id, commentText.trim())
+                    setComments((prev) => [comment, ...prev])
+                    setCommentText('')
+                  } catch (err) {
+                    const message = err instanceof Error ? err.message : 'We could not post your encouragement. Please try again shortly.'
+                    window.alert(message)
+                  } finally {
+                    setCommentBusy(false)
+                  }
+                }} disabled={!commentText.trim() || commentBusy}>
+                  {commentBusy ? 'Posting...' : 'Post'}
+                </button>
+              </div>
             </div>
-            <div className={styles.commentComposer}>
-              <input type="text" placeholder="Add a comment…" disabled />
-              <button type="button" disabled>
-                ⬆️
-              </button>
-            </div>
-          </div>
         </div>
       ) : null}
     </div>

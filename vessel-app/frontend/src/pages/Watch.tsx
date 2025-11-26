@@ -312,7 +312,7 @@ export default function Watch() {
                 {comments.length ? `${comments.length.toLocaleString()} comments` : 'Comments'}
               </span>
               <button type="button" className={styles.close} onClick={() => setShowComments(false)} aria-label="Close comments">
-                A-
+                âœ•
               </button>
             </div>
             <div className={styles.commentList}>
@@ -328,7 +328,7 @@ export default function Watch() {
                     <div className={styles.commentTop}>
                       <span className={styles.commentAuthor}>{comment.user.name}</span>
                       <span className={styles.commentMeta}>
-                        {comment.user.handle ? `@${comment.user.handle}` : 'listener'} · {formatRelativeTime(comment.createdAt)}
+                        {comment.user.handle ? `@${comment.user.handle}` : 'listener'} ï¿½ {formatRelativeTime(comment.createdAt)}
                       </span>
                     </div>
                     <p>{comment.body}</p>

@@ -174,9 +174,8 @@ export default function Feed() {
             </div>
           </div>
         ) : null}
-      </div>
 
-      <div className={styles.scroller}>
+        {/* render the interactive results panel near the search field */}
         {showResults && searchResults ? (
           <div className={styles.searchOverlay} onClick={() => { setShowResults(false); }}>
             <div className={styles.searchResultsPanel} onClick={(e) => e.stopPropagation()}>
@@ -241,7 +240,6 @@ export default function Feed() {
                         onClick={() => {
                           setShowResults(false)
                           setSearchOpen(false)
-                          // navigate to discover and filter by tag/category — here we use query param
                           navigate(`/home?q=${encodeURIComponent(c)}`)
                         }}
                       >
@@ -259,7 +257,9 @@ export default function Feed() {
             </div>
           </div>
         ) : null}
+      </div>
 
+      <div className={styles.scroller}>
         {tab === 'following' ? <Following /> : isFriends ? <Friends /> : <ForYou filter={activeTab.filter} refreshKey={refreshToken} />}
       </div>
     </div>
