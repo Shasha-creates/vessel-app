@@ -386,7 +386,7 @@ export default function Home() {
                     <div className={styles.commentBody}>
                       <div className={styles.commentTop}>
                         <span className={styles.commentAuthor}>{comment.user.name}</span>
-                        <span className={styles.commentMeta}>{comment.user.handle ? `@${comment.user.handle}` : 'listener'} � {formatRelativeTime(comment.createdAt)}</span>
+                        <span className={styles.commentMeta}>{comment.user.handle ? `@${comment.user.handle}` : 'listener'} • {formatRelativeTime(comment.createdAt)}</span>
                       </div>
                       <p>{comment.body}</p>
                     </div>

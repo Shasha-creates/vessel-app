@@ -55,9 +55,16 @@ export default function Inbox() {
   const [mutualLoading, setMutualLoading] = React.useState(false)
   const [mutualError, setMutualError] = React.useState<string | null>(null)
   const [handleSuggestions, setHandleSuggestions] = React.useState<ContactMatch[]>([])
-  const [requests, setRequests] = React.useState<
-    { id: string; handle: string; body: string; createdAt: string; direction: 'inbound' | 'outbound'; status: 'pending' | 'accepted' | 'declined' }
-  >([])
+  type MessageRequest = {
+    id: string
+    handle: string
+    body: string
+    createdAt: string
+    direction: 'inbound' | 'outbound'
+    status: 'pending' | 'accepted' | 'declined'
+  }
+
+  const [requests, setRequests] = React.useState<MessageRequest[]>([])
   const [blockedHandles, setBlockedHandles] = React.useState<Set<string>>(new Set())
   const isAuthenticated = contentService.isAuthenticated()
   const threadRefs = React.useRef<Record<string, HTMLDivElement | null>>({})
