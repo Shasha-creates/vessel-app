@@ -1,7 +1,8 @@
 .inbox {
-  --inbox-bg: #f2eee1;
+  --inbox-bg: #f1eee1; /* changed from #f2eee1 to #f1eee1 per request */
   --inbox-card: #4d583f;
-  --inbox-pill: #d9c9ab;
+  /* yellow accents should use the requested light ivory */
+  --inbox-pill: #F0ECE5;
   --inbox-accent: #5c5238;
   --inbox-muted: #8a7b60;
   width: min(420px, 94vw);
@@ -12,6 +13,8 @@
   gap: 1.75rem;
   background: var(--inbox-bg);
   border-radius: 32px;
+  /* subtle green stroke around the inbox content (thinner) */
+  border: 0.5px solid #2f361f;
 }
 
 .hero h1 {
@@ -241,7 +244,7 @@
 }
 
 .unread {
-  background: #e9c46a;
+  background: var(--inbox-pill);
   color: #20160e;
 }
 
@@ -410,13 +413,13 @@
 
 .bubbleThem {
   align-self: flex-start;
-  background: #fff9e6;
+  background: var(--inbox-pill);
   color: #43351c;
 }
 
 .bubbleMe {
   align-self: flex-end;
-  background: #e9c46a;
+  background: var(--inbox-pill);
   color: #3a2919;
   font-weight: 600;
 }
@@ -479,8 +482,8 @@
   height: 46px;
   font-weight: 600;
   cursor: pointer;
-  background: #e9c46a;
-  color: #fff;
+  background: var(--inbox-pill);
+  color: #1e2415;
   box-shadow: 0 12px 24px -12px rgba(233, 196, 106, 0.8);
   transition: transform 0.16s ease, box-shadow 0.16s ease, opacity 0.16s ease;
 }
