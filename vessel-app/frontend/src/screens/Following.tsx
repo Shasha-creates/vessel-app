@@ -41,7 +41,8 @@ export default function Following() {
       }
     }
 
-    load()
+    // Initial
+    load() 
     const unsubscribe = contentService.subscribe(load)
     return () => {
       mounted = false
